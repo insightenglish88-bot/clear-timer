@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default Deny: Block all root and unlisted collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Timer Sessions Collection
+    match /timer_sessions/{sessionId} {
+      allow read: if true;
+      
+      allow create: if request.resource.data.title is string
+                    && request.resource.data.title.size() <= 100
+                    && request.resource.data.totalMs is number
+                    && request.resource.data.totalMs >= 0
+                    && request.resource.data.formattedTime is string
+                    && (request.resource.data.createdAt is timestamp || request.resource.data.createdAt is number)
+                    && (request.resource.data.mode in ['yle', 'middle', 'business', 'cartoon'])
+                    && (!('theme' in request.resource.data) || request.resource.data.theme in ['light', 'dark']);
+      
+      allow update, delete: if false;
+    }
+
+    // Timer Presets Collection (Intervals, Study blocks, Speech drills)
+    match /timer_presets/{presetId} {
+      allow read: if true;
+      
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.name.size() <= 60
+                    && request.resource.data.durationMs is number
+                    && request.resource.data.durationMs > 0
+                    && request.resource.data.durationMs <= 86400000
+                    && request.resource.data.mode in ['yle', 'middle', 'business'];
+      
+      allow update, delete: if false;
+    }
+
+    // User Preferences Collection (Authenticated user state)
+    match /user_preferences/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

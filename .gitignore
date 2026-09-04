@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Firebase cache and logs
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+
+# Antigravity & Agent trajectory files
+.antigravity/
+
+# System and editor files
+.DS_Store
+*.log
+.vscode/
+metadata.json

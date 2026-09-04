@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Comic Neue', 'Fredoka', cursive, sans-serif;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.font-comic {
+  font-family: 'Comic Neue', cursive, sans-serif;
+}
+
+.font-cartoon {
+  font-family: 'Fredoka', cursive, sans-serif;
+}
+
+.font-chewy {
+  font-family: 'Chewy', cursive, sans-serif;
+}
+
+/* Comic / Cartoon Shadows */
+.comic-shadow {
+  box-shadow: 4px 4px 0px #000000;
+}
+
+.comic-shadow-sm {
+  box-shadow: 2px 2px 0px #000000;
+}
+
+.comic-shadow-lg {
+  box-shadow: 6px 6px 0px #000000;
+}
+
+.comic-shadow-red {
+  box-shadow: 5px 5px 0px #b91c1c;
+}
+
+/* 3D Red block number style (like the 5 in reference image) */
+.terracotta-3d {
+  color: #b91c1c;
+  text-shadow: 
+    1px 1px 0px #7f1d1d,
+    2px 2px 0px #7f1d1d,
+    3px 3px 0px #7f1d1d,
+    4px 4px 0px #450a0a,
+    6px 6px 12px rgba(0, 0, 0, 0.4);
+}

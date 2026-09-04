@@ -1,0 +1,17 @@
+#!/bin/sh
+# SecOps Pre-Commit Guardrail
+# Prevents commits containing secrets, exposed API keys, or tracked sensitive files.
+
+echo "\n🛡️  Running SecOps pre-commit security check..."
+
+node scripts/secops-audit.mjs --scan-only
+
+STATUS=$?
+if [ $STATUS -ne 0 ]; then
+  echo "\n❌ [SECOPS BLOCKED] Commit rejected by pre-commit security guardrail!"
+  echo "   Please review the flagged secrets/files above and remove them before committing.\n"
+  exit 1
+fi
+
+echo "✅ [SECOPS PASS] Code is secure. Proceeding with commit.\n"
+exit 0
