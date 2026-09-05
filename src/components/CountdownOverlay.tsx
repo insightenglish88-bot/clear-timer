@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { FastForward, X } from 'lucide-react';
 import { playSound, speakVoice, cancelVoice } from '../utils/audio';
 import { AppTheme } from '../types';
@@ -18,6 +18,7 @@ export function CountdownOverlay({
   onCancel,
 }: CountdownOverlayProps) {
   const [count, setCount] = useState<number>(5);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (count > 0) {
@@ -54,17 +55,24 @@ export function CountdownOverlay({
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      /* Opaque on mount for the same reason as the privacy shield: this
+         overlay covers the clock, so its visibility must not wait on a frame. */
+      initial={false}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className={`absolute inset-0 z-40 flex flex-col items-center justify-between p-6 sm:p-10 select-none ${
+      role="status"
+      aria-live="assertive"
+      aria-label={count > 0 ? `Starting in ${count}` : 'Go'}
+      /* `fixed` rather than `absolute`: the shell has no positioned ancestor,
+         so this was silently resolving against the viewport anyway. */
+      className={`fixed inset-0 z-40 flex flex-col items-center justify-between p-4 sm:p-10 select-none overflow-y-auto ${
         theme === 'dark' ? 'bg-black/95 text-white' : 'bg-white/95 text-black'
-      } backdrop-blur-sm border-4 border-[#b91c1c] rounded-3xl`}
+      } backdrop-blur-sm`}
     >
       {/* Top Bar: Cancel & Status tag */}
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-block w-3 h-3 rounded-full bg-[#b91c1c] animate-ping" />
+          <span className="inline-block w-3 h-3 rounded-full bg-[#b91c1c] motion-safe:animate-ping" />
           <span className="font-comic font-bold text-sm tracking-wide text-black dark:text-white">
             GET READY...
           </span>
@@ -85,19 +93,31 @@ export function CountdownOverlay({
         <AnimatePresence mode="popLayout">
           <motion.div
             key={count}
-            initial={{ scale: 0.3, opacity: 0, rotate: count === 0 ? 0 : -15 }}
-            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-            exit={{ scale: 1.4, opacity: 0, rotate: count === 0 ? 0 : 10 }}
-            transition={{
-              type: 'spring',
-              stiffness: 450,
-              damping: 22,
-            }}
+            initial={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { scale: 0.3, opacity: 0, rotate: count === 0 ? 0 : -15 }
+            }
+            animate={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : { scale: 1, opacity: 1, rotate: 0 }
+            }
+            exit={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { scale: 1.4, opacity: 0, rotate: count === 0 ? 0 : 10 }
+            }
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.12 }
+                : { type: 'spring', stiffness: 450, damping: 22 }
+            }
             className="flex flex-col items-center justify-center"
           >
             {count > 0 ? (
               <>
-                <span className="font-chewy text-[clamp(9rem,30vw,20rem)] leading-none terracotta-3d select-none">
+                <span className="font-chewy text-[clamp(5rem,min(28vw,42vh),16rem)] leading-none terracotta-3d select-none">
                   {count}
                 </span>
 
@@ -111,7 +131,7 @@ export function CountdownOverlay({
               </>
             ) : (
               <>
-                <span className="font-chewy text-[clamp(9rem,32vw,22rem)] leading-none terracotta-3d select-none tracking-wider">
+                <span className="font-chewy text-[clamp(4rem,min(24vw,34vh),13rem)] leading-none terracotta-3d select-none tracking-wider">
                   GO!
                 </span>
 

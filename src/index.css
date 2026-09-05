@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Theme variant
+
+   Tailwind v4 maps `dark:` to `prefers-color-scheme` unless told otherwise.
+   This app owns its theme in React state, so without this variant the ~99
+   `dark:` utilities across the components answer to the operating system
+   while the root element answers to the toggle — the two disagree and text
+   lands on same-coloured backgrounds. Binding the variant to `data-theme`
+   puts every existing `dark:` class under the app's control.
+   --------------------------------------------------------------------------- */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* Type families. Plus Jakarta Sans and JetBrains Mono were already being
+     downloaded by index.html but never referenced; they now carry the two
+     modes whose register is not cartoon. */
+  --font-comic: 'Comic Neue', ui-rounded, system-ui, sans-serif;
+  --font-cartoon: 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --font-chewy: 'Chewy', ui-rounded, system-ui, cursive;
+  --font-ui: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-numeric: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Brand colours, preserved exactly from the shipped identity. */
+  --color-yle: #b91c1c;
+  --color-yle-hover: #991b1b;
+  --color-yle-deep: #7f1d1d;
+  --color-middle: #4f46e5;
+  --color-middle-hover: #4338ca;
+  --color-business: #1e293b;
+  --color-business-hover: #0f172a;
+
+  /* Semantic z-scale. Replaces ad-hoc values so stacking stays reasonable. */
+  --z-index-chrome: 10;
+  --z-index-sticky: 20;
+  --z-index-shield: 30;
+  --z-index-countdown: 40;
+  --z-index-modal: 50;
+}
+
 @layer base {
+  /* The mode sets the voice of the whole shell, not just the panels. */
+  :root {
+    --app-ink: #0a0a0a;
+    --app-muted: #52525b; /* 7.6:1 on white — passes body text */
+    --app-surface: #ffffff;
+    --app-ring: var(--color-yle);
+  }
+
+  :root[data-theme='dark'] {
+    --app-ink: #fafafa;
+    --app-muted: #a1a1aa; /* 8.9:1 on near-black */
+    --app-surface: #000000;
+  }
+
+  :root[data-mode='middle'] {
+    --app-ring: var(--color-middle);
+  }
+
+  :root[data-mode='business'] {
+    --app-ring: #475569;
+  }
+
+  html {
+    background-color: var(--app-surface);
+    color-scheme: light;
+  }
+
+  html[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
   body {
-    font-family: 'Comic Neue', 'Fredoka', cursive, sans-serif;
-    user-select: none;
+    font-family: var(--font-comic);
     -webkit-font-smoothing: antialiased;
+    /* Chrome is not selectable (this is a wall-projected timer), but anything
+       the user actually authors must remain selectable. */
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
+  }
+
+  /* One visible focus treatment for every control in the app. Several
+     components previously cleared the outline without replacing it. */
+  :focus-visible {
+    outline: 3px solid var(--app-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Mode-aware type
+
+   `font-comic` marks "the app's UI voice" and is applied across shared chrome
+   (controls, status pills, shortcut bar). Redefining it per mode re-registers
+   all of that chrome at once, so Business English stops speaking in Comic Neue
+   without touching its forty-odd call sites.
+   --------------------------------------------------------------------------- */
 .font-comic {
-  font-family: 'Comic Neue', cursive, sans-serif;
+  font-family: var(--font-comic);
 }
 
 .font-cartoon {
-  font-family: 'Fredoka', cursive, sans-serif;
+  font-family: var(--font-cartoon);
 }
 
 .font-chewy {
-  font-family: 'Chewy', cursive, sans-serif;
+  font-family: var(--font-chewy);
 }
 
-/* Comic / Cartoon Shadows */
+:root[data-mode='middle'] body,
+:root[data-mode='business'] body,
+:root[data-mode='middle'] .font-comic,
+:root[data-mode='business'] .font-comic,
+:root[data-mode='middle'] .font-cartoon,
+:root[data-mode='business'] .font-cartoon {
+  font-family: var(--font-ui);
+}
+
+/* Comic / cartoon offset shadows — the YLE visual signature. */
 .comic-shadow {
   box-shadow: 4px 4px 0px #000000;
 }
@@ -34,16 +137,73 @@
 }
 
 .comic-shadow-red {
-  box-shadow: 5px 5px 0px #b91c1c;
+  box-shadow: 5px 5px 0px var(--color-yle);
 }
 
-/* 3D Red block number style (like the 5 in reference image) */
+/* The hard offset shadow is YLE's language. Business English reads as flat
+   and executive; Middle School keeps a softer version. */
+:root[data-mode='business'] .comic-shadow,
+:root[data-mode='business'] .comic-shadow-lg {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08), 0 4px 12px rgb(15 23 42 / 0.08);
+}
+
+:root[data-mode='business'] .comic-shadow-sm {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+:root[data-mode='middle'] .comic-shadow,
+:root[data-mode='middle'] .comic-shadow-lg {
+  box-shadow: 3px 3px 0px rgb(49 46 129 / 0.22);
+}
+
+:root[data-mode='middle'] .comic-shadow-sm {
+  box-shadow: 2px 2px 0px rgb(49 46 129 / 0.18);
+}
+
+/* 3D red block numerals for the countdown. */
 .terracotta-3d {
-  color: #b91c1c;
-  text-shadow: 
-    1px 1px 0px #7f1d1d,
-    2px 2px 0px #7f1d1d,
-    3px 3px 0px #7f1d1d,
+  color: var(--color-yle);
+  text-shadow:
+    1px 1px 0px var(--color-yle-deep),
+    2px 2px 0px var(--color-yle-deep),
+    3px 3px 0px var(--color-yle-deep),
     4px 4px 0px #450a0a,
     6px 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-mode='middle'] .terracotta-3d {
+  color: var(--color-middle);
+  text-shadow:
+    1px 1px 0px #3730a3,
+    2px 2px 0px #3730a3,
+    3px 3px 0px #312e81,
+    4px 4px 0px #1e1b4b,
+    6px 6px 12px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-mode='business'] .terracotta-3d {
+  color: #0f172a;
+  text-shadow: none;
+}
+
+:root[data-mode='business'][data-theme='dark'] .terracotta-3d {
+  color: #f1f5f9;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+
+   Every animation in the app has a still equivalent. Pulses, pings and bounces
+   resolve to their steady state rather than disappearing, so status that was
+   carried by movement is still carried by presence.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

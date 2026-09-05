@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
+import { useDialog } from '../hooks/useDialog';
 import {
   X,
   Trophy,
@@ -39,6 +40,8 @@ export function ScoreboardModal({
 }: ScoreboardModalProps) {
   const [newTeamName, setNewTeamName] = useState<string>('');
   const [recordedFeedback, setRecordedFeedback] = useState<string | null>(null);
+  const dialogRef = useDialog<HTMLDivElement>(onClose);
+  const prefersReducedMotion = useReducedMotion();
 
   function handleAddTeam(e: FormEvent) {
     e.preventDefault();
@@ -61,11 +64,27 @@ export function ScoreboardModal({
     recordedTeams.length > 0 ? Math.min(...recordedTeams.map((t) => t.timeMs)) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm select-none">
+    /* The backdrop is both the motion element and the component's root, so
+       AnimatePresence tracks this subtree directly rather than through a plain
+       wrapper div. `initial={false}` keeps the dialog visible on first paint. */
+    <motion.div
+      initial={false}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm select-none"
+      onClick={onClose}
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scoreboard-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        initial={prefersReducedMotion ? false : { scale: 0.96 }}
+        animate={prefersReducedMotion ? {} : { scale: 1 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className={`relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl border-4 border-[#b91c1c] ${
           theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'
         } shadow-[8px_8px_0px_#000000] overflow-hidden`}
@@ -77,10 +96,10 @@ export function ScoreboardModal({
               <Clock className="w-6 h-6 text-white stroke-[2.5]" />
             </div>
             <div>
-              <h2 className="font-comic font-bold text-lg sm:text-2xl text-[#b91c1c] leading-tight">
+              <h2 id="scoreboard-title" className="font-comic font-bold text-lg sm:text-2xl text-[#b91c1c] leading-tight">
                 Team Time Scoreboard
               </h2>
-              <p className="text-xs font-comic text-neutral-500">
+              <p className="text-xs font-comic text-neutral-700 dark:text-neutral-300">
                 Record and compare finish times for each team
               </p>
             </div>
@@ -89,6 +108,7 @@ export function ScoreboardModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close the team scoreboard"
             className="p-2 rounded-xl border-2 border-black hover:bg-neutral-100 dark:hover:bg-neutral-800 text-black dark:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5 text-[#b91c1c]" />
@@ -107,7 +127,7 @@ export function ScoreboardModal({
                 {formatTime(currentElapsedMs)}
               </span>
             </div>
-            <span className="text-[11px] sm:text-xs font-comic text-neutral-500">
+            <span className="text-[11px] sm:text-xs font-comic text-neutral-700 dark:text-neutral-300">
               Tap &quot;Record Current Time&quot; on any team to log their time
             </span>
           </div>
@@ -123,7 +143,7 @@ export function ScoreboardModal({
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
                 placeholder={`Team name (e.g. Team ${teams.length + 1})...`}
-                className="w-full px-3.5 py-2 rounded-xl border-2 border-black bg-white dark:bg-black font-comic text-sm text-black dark:text-white placeholder:text-neutral-400"
+                className="w-full px-3.5 py-2 rounded-xl border-2 border-black bg-white dark:bg-black font-comic text-sm text-black dark:text-white placeholder:text-neutral-600 dark:placeholder:text-neutral-400"
               />
             </div>
             <button
@@ -142,7 +162,7 @@ export function ScoreboardModal({
               <p className="font-comic font-bold text-black dark:text-white text-base">
                 No teams added yet!
               </p>
-              <p className="font-comic text-xs text-neutral-500">
+              <p className="font-comic text-xs text-neutral-700 dark:text-neutral-300">
                 Type a name above and click &quot;Add Team&quot; to begin your time scoreboard.
               </p>
             </div>
@@ -179,7 +199,7 @@ export function ScoreboardModal({
                       <button
                         type="button"
                         onClick={() => onRemoveTeam(team.id)}
-                        className="p-1 rounded-lg text-neutral-400 hover:text-[#b91c1c] transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-neutral-700 dark:text-neutral-300 hover:text-[#b91c1c] transition-colors cursor-pointer"
                         title="Remove Team"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -193,7 +213,7 @@ export function ScoreboardModal({
                           {formatTime(team.timeMs)}
                         </span>
                       ) : (
-                        <span className="font-mono text-2xl sm:text-3xl font-bold text-neutral-400 tabular-nums">
+                        <span className="font-mono text-2xl sm:text-3xl font-bold text-neutral-600 dark:text-neutral-400 tabular-nums">
                           -- : -- . --
                         </span>
                       )}
@@ -211,7 +231,7 @@ export function ScoreboardModal({
                             ? 'bg-black text-white'
                             : currentElapsedMs > 0
                             ? 'bg-[#b91c1c] hover:bg-[#991b1b] text-white comic-shadow-sm'
-                            : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500 border-neutral-300 cursor-not-allowed opacity-60'
+                            : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 cursor-not-allowed opacity-60'
                         }`}
                       >
                         {isJustRecorded ? (
@@ -263,7 +283,7 @@ export function ScoreboardModal({
                           <button
                             type="button"
                             onClick={() => onSetTeamTime(team.id, 0)}
-                            className="py-1 px-2 rounded-lg text-neutral-400 hover:text-[#b91c1c] font-comic text-[11px] font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                            className="py-1 px-2 rounded-lg text-neutral-700 dark:text-neutral-300 hover:text-[#b91c1c] font-comic text-[11px] font-bold flex items-center gap-1 hover:underline cursor-pointer"
                             title="Clear this team's time"
                           >
                             <RotateCcw className="w-3 h-3" />
@@ -282,7 +302,7 @@ export function ScoreboardModal({
         {/* Footer */}
         {teams.length > 0 && (
           <div className="p-3 sm:p-4 border-t-2 border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-between">
-            <span className="text-xs font-comic font-bold text-neutral-500">
+            <span className="text-xs font-comic font-bold text-neutral-700 dark:text-neutral-300">
               {recordedTeams.length} of {teams.length} Teams Completed
             </span>
             <button
@@ -296,6 +316,6 @@ export function ScoreboardModal({
           </div>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
