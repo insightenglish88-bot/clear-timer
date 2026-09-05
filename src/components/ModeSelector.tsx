@@ -11,6 +11,8 @@ interface ModeSelectorProps {
 interface ModeConfig {
   id: LearnerMode;
   label: string;
+  /** Compact label for narrow screens, where the full name wraps to two lines. */
+  shortLabel: string;
   sublabel: string;
   icon: React.ReactNode;
 }
@@ -24,18 +26,21 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
     {
       id: 'yle',
       label: 'YLE Learners',
+      shortLabel: 'YLE',
       sublabel: 'Kids & Games',
       icon: <Sparkles className="w-4 h-4" />,
     },
     {
       id: 'middle',
       label: 'Middle School',
+      shortLabel: 'Middle',
       sublabel: 'Focus & Tasks',
       icon: <BookOpen className="w-4 h-4" />,
     },
     {
       id: 'business',
       label: 'Business English',
+      shortLabel: 'Business',
       sublabel: 'Executive & Pacing',
       icon: <Briefcase className="w-4 h-4" />,
     },
@@ -70,8 +75,8 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
           } else {
             activeClasses =
               theme === 'dark'
-                ? 'text-neutral-400 hover:text-white hover:bg-neutral-800'
-                : 'text-neutral-600 hover:text-black hover:bg-white/80';
+                ? 'text-neutral-300 hover:text-white hover:bg-neutral-800'
+                : 'text-neutral-700 hover:text-black hover:bg-white/80';
           }
 
           return (
@@ -79,16 +84,20 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
               key={mode.id}
               type="button"
               onClick={() => onSelectMode(mode.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${activeClasses}`}
+              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${activeClasses}`}
               aria-pressed={isActive}
               title={`Switch to ${mode.label} Mode (${mode.sublabel})`}
             >
               <span className="shrink-0">{mode.icon}</span>
               <div className="flex flex-col items-start leading-tight">
-                <span className="font-semibold">{mode.label}</span>
+                <span className="font-semibold sm:hidden">{mode.shortLabel}</span>
+                <span className="font-semibold hidden sm:inline">{mode.label}</span>
+                {/* At 10px these sublabels have no contrast to spare, so the
+                    hierarchy is carried by size and weight rather than by
+                    dimming them below the text contrast floor. */}
                 <span
                   className={`text-[10px] hidden md:inline font-normal ${
-                    isActive ? 'opacity-90' : 'opacity-70'
+                    isActive ? 'opacity-90' : ''
                   }`}
                 >
                   {mode.sublabel}

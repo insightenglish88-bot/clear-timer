@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
+import { useDialog } from '../hooks/useDialog';
 import {
   X,
   Clock,
@@ -34,6 +35,10 @@ export function SessionsModal({
   const [loading, setLoading] = useState<boolean>(true);
   const [sessionTitle, setSessionTitle] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const dialogRef = useDialog<HTMLDivElement>(onClose);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     loadSessionsList();
@@ -52,7 +57,7 @@ export function SessionsModal({
   }
 
   async function handleSaveCurrent() {
-    if (currentElapsedMs <= 0) return;
+    if (currentElapsedMs <= 0 || saving) return;
 
     const title =
       sessionTitle.trim() ||
@@ -61,20 +66,32 @@ export function SessionsModal({
         minute: '2-digit',
       })})`;
 
-    const result = await saveSessionToFirebase({
-      title,
-      totalMs: currentElapsedMs,
-      formattedTime: formatTime(currentElapsedMs),
-      createdAt: Date.now(),
-      mode,
-      theme,
-    });
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const result = await saveSessionToFirebase({
+        title,
+        totalMs: currentElapsedMs,
+        formattedTime: formatTime(currentElapsedMs),
+        createdAt: Date.now(),
+        mode,
+        theme,
+      });
 
-    if (result.success) {
-      setSaveSuccess(true);
-      setSessionTitle('');
-      setTimeout(() => setSaveSuccess(false), 2500);
-      loadSessionsList();
+      if (result.success) {
+        setSaveSuccess(true);
+        setSessionTitle('');
+        setTimeout(() => setSaveSuccess(false), 2500);
+        await loadSessionsList();
+      } else {
+        setSaveError('That session could not be saved. Try again.');
+      }
+    } catch {
+      // Previously this failure path was silent: the button did nothing and
+      // the user had no way to tell the save had not happened.
+      setSaveError('That session could not be saved. Try again.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -84,11 +101,26 @@ export function SessionsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm select-none">
+    /* Backdrop is the motion root so AnimatePresence tracks this subtree's
+       exit; matches ScoreboardModal so both dialogs behave identically. */
+    <motion.div
+      initial={false}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm select-none"
+      onClick={onClose}
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sessions-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        initial={prefersReducedMotion ? false : { scale: 0.96 }}
+        animate={prefersReducedMotion ? {} : { scale: 1 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className={`relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border-4 border-[#b91c1c] ${
           theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'
         } shadow-[8px_8px_0px_#000000] overflow-hidden`}
@@ -100,10 +132,10 @@ export function SessionsModal({
               <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="font-comic font-bold text-lg sm:text-xl text-[#b91c1c] leading-tight">
+              <h2 id="sessions-title" className="font-comic font-bold text-lg sm:text-xl text-[#b91c1c] leading-tight">
                 Clear Timer Sessions
               </h2>
-              <p className="text-xs font-comic text-neutral-500">
+              <p className="text-xs font-comic text-neutral-700 dark:text-neutral-300">
                 Saved practice and lesson timings
               </p>
             </div>
@@ -112,6 +144,7 @@ export function SessionsModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close saved sessions"
             className="p-2 rounded-xl border-2 border-black hover:bg-neutral-100 dark:hover:bg-neutral-800 text-black dark:text-white transition-colors cursor-pointer"
           >
             <X className="w-4 h-4 text-[#b91c1c]" />
@@ -133,21 +166,33 @@ export function SessionsModal({
                     {formatTime(currentElapsedMs)}
                   </span>
                 </div>
+                <label htmlFor="session-title" className="sr-only">
+                  Session name
+                </label>
                 <input
+                  id="session-title"
                   type="text"
                   value={sessionTitle}
                   onChange={(e) => setSessionTitle(e.target.value)}
                   placeholder="Session name (e.g. Lesson #1)..."
-                  className="w-full px-3 py-1.5 rounded-xl border-2 border-black bg-white dark:bg-black font-comic text-xs sm:text-sm text-black dark:text-white"
+                  className="w-full px-3 py-1.5 rounded-xl border-2 border-black bg-white dark:bg-black font-comic text-xs sm:text-sm text-black dark:text-white placeholder:text-neutral-600 dark:placeholder:text-neutral-400"
                 />
+                {saveError && (
+                  <p role="alert" className="mt-1.5 text-xs font-comic font-bold text-rose-700 dark:text-rose-400">
+                    {saveError}
+                  </p>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={handleSaveCurrent}
-                className="px-4 py-2 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] text-white font-comic font-bold text-xs sm:text-sm border-2 border-black comic-shadow transition-transform active:scale-95 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                disabled={saving}
+                className="px-4 py-2 rounded-xl bg-[#b91c1c] hover:bg-[#991b1b] disabled:opacity-60 disabled:cursor-not-allowed text-white font-comic font-bold text-xs sm:text-sm border-2 border-black comic-shadow transition-transform active:scale-95 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
               >
-                {saveSuccess ? (
+                {saving ? (
+                  <span>Saving...</span>
+                ) : saveSuccess ? (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Saved!</span>
@@ -169,8 +214,21 @@ export function SessionsModal({
             </h3>
 
             {loading ? (
-              <div className="py-8 text-center text-sm font-comic text-neutral-500">
-                Loading sessions...
+              /* Skeleton rows rather than a bare spinner, so the list does not
+                 jump when the real records land. */
+              <div className="space-y-2" aria-busy="true" aria-label="Loading saved sessions">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="p-3 sm:p-4 rounded-2xl border-2 border-neutral-300 dark:border-neutral-700 flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="h-3.5 w-2/5 rounded bg-neutral-200 dark:bg-neutral-800 motion-safe:animate-pulse" />
+                      <div className="h-2.5 w-1/4 rounded bg-neutral-200 dark:bg-neutral-800 motion-safe:animate-pulse" />
+                    </div>
+                    <div className="h-5 w-20 rounded bg-neutral-200 dark:bg-neutral-800 motion-safe:animate-pulse" />
+                  </div>
+                ))}
               </div>
             ) : sessions.length === 0 ? (
               <div className="py-8 px-4 rounded-2xl border-2 border-dashed border-black text-center space-y-1">
@@ -178,7 +236,7 @@ export function SessionsModal({
                 <p className="font-comic font-bold text-black dark:text-white text-sm">
                   No sessions saved yet!
                 </p>
-                <p className="font-comic text-xs text-neutral-500">
+                <p className="font-comic text-xs text-neutral-700 dark:text-neutral-300">
                   Run the timer and tap &quot;Save Session&quot; to preserve your timing records.
                 </p>
               </div>
@@ -195,7 +253,7 @@ export function SessionsModal({
                           {item.title}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs font-comic text-neutral-500">
+                      <div className="flex items-center gap-2 text-xs font-comic text-neutral-700 dark:text-neutral-300">
                         <span>
                           {new Date(item.createdAt).toLocaleDateString()} at{' '}
                           {new Date(item.createdAt).toLocaleTimeString([], {
@@ -213,6 +271,7 @@ export function SessionsModal({
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
+                        aria-label={`Delete session: ${item.title}`}
                         className="p-1.5 rounded-lg text-black dark:text-white hover:text-[#b91c1c] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                         title="Delete Session"
                       >
@@ -226,6 +285,6 @@ export function SessionsModal({
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
