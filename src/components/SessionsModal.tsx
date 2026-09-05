@@ -14,13 +14,14 @@ import {
   saveSessionToFirebase,
   deleteSession,
 } from '../firebase/sessions';
-import { TimerSession, AppTheme, LearnerMode } from '../types';
+import { TimerSession, AppTheme } from '../types';
+import { SkinTokens } from '../theme/skins';
 import { formatTime } from '../utils/formatTime';
 
 interface SessionsModalProps {
   currentElapsedMs: number;
-  theme: AppTheme;
-  mode?: LearnerMode;
+  theme?: AppTheme;
+  tokens?: SkinTokens;
   onClose: () => void;
   onLoadSession?: (session: TimerSession) => void;
 }
@@ -28,7 +29,7 @@ interface SessionsModalProps {
 export function SessionsModal({
   currentElapsedMs,
   theme,
-  mode = 'yle',
+  tokens,
   onClose,
 }: SessionsModalProps) {
   const [sessions, setSessions] = useState<TimerSession[]>([]);
@@ -74,7 +75,7 @@ export function SessionsModal({
         totalMs: currentElapsedMs,
         formattedTime: formatTime(currentElapsedMs),
         createdAt: Date.now(),
-        mode,
+        skin: tokens?.id,
         theme,
       });
 

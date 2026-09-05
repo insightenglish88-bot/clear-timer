@@ -2,18 +2,18 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { FastForward, X } from 'lucide-react';
 import { playSound, speakVoice, cancelVoice } from '../utils/audio';
-import { AppTheme } from '../types';
+import { SkinTokens } from '../theme/skins';
 
 interface CountdownOverlayProps {
   soundEnabled: boolean;
-  theme: AppTheme;
+  tokens: SkinTokens;
   onComplete: () => void;
   onCancel: () => void;
 }
 
 export function CountdownOverlay({
   soundEnabled,
-  theme,
+  tokens,
   onComplete,
   onCancel,
 }: CountdownOverlayProps) {
@@ -53,42 +53,45 @@ export function CountdownOverlay({
     onCancel();
   }
 
+  const isBracket = !!tokens.buttons.bracketStyle;
+
   return (
     <motion.div
-      /* Opaque on mount for the same reason as the privacy shield: this
-         overlay covers the clock, so its visibility must not wait on a frame. */
       initial={false}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       role="status"
       aria-live="assertive"
       aria-label={count > 0 ? `Starting in ${count}` : 'Go'}
-      /* `fixed` rather than `absolute`: the shell has no positioned ancestor,
-         so this was silently resolving against the viewport anyway. */
       className={`fixed inset-0 z-40 flex flex-col items-center justify-between p-4 sm:p-10 select-none overflow-y-auto ${
-        theme === 'dark' ? 'bg-black/95 text-white' : 'bg-white/95 text-black'
-      } backdrop-blur-sm`}
+        tokens.isDark ? 'bg-black/90 text-white' : 'bg-[#FBF9F5]/95 text-black'
+      } backdrop-blur-md`}
     >
       {/* Top Bar: Cancel & Status tag */}
       <div className="w-full flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-block w-3 h-3 rounded-full bg-[#b91c1c] motion-safe:animate-ping" />
-          <span className="font-comic font-bold text-sm tracking-wide text-black dark:text-white">
-            GET READY...
+          <span
+            className="inline-block w-3 h-3 rounded-full motion-safe:animate-ping"
+            style={{ backgroundColor: tokens.previewColors[1] }}
+          />
+          <span
+            className={`${tokens.typography.fontBody} font-bold text-sm tracking-widest uppercase`}
+          >
+            {isBracket ? '[ GET READY ]' : 'GET READY...'}
           </span>
         </div>
 
         <button
           type="button"
           onClick={handleCancel}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-comic font-bold border-2 border-black bg-white dark:bg-black text-black dark:text-white transition-all cursor-pointer shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          className={`flex items-center gap-1.5 px-3 py-1.5 ${tokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${tokens.buttons.secondary}`}
         >
-          <X className="w-3.5 h-3.5 text-[#b91c1c]" />
-          Cancel
+          <X className="w-3.5 h-3.5" />
+          <span>{isBracket ? '[ CANCEL ]' : 'Cancel'}</span>
         </button>
       </div>
 
-      {/* Center 3D Countdown Number or GO! */}
+      {/* Center Countdown Number or GO! */}
       <div className="flex-1 flex flex-col items-center justify-center my-auto">
         <AnimatePresence mode="popLayout">
           <motion.div
@@ -96,7 +99,7 @@ export function CountdownOverlay({
             initial={
               prefersReducedMotion
                 ? { opacity: 0 }
-                : { scale: 0.3, opacity: 0, rotate: count === 0 ? 0 : -15 }
+                : { scale: 0.3, opacity: 0, rotate: count === 0 ? 0 : -10 }
             }
             animate={
               prefersReducedMotion
@@ -106,7 +109,7 @@ export function CountdownOverlay({
             exit={
               prefersReducedMotion
                 ? { opacity: 0 }
-                : { scale: 1.4, opacity: 0, rotate: count === 0 ? 0 : 10 }
+                : { scale: 1.3, opacity: 0, rotate: count === 0 ? 0 : 10 }
             }
             transition={
               prefersReducedMotion
@@ -117,28 +120,32 @@ export function CountdownOverlay({
           >
             {count > 0 ? (
               <>
-                <span className="font-chewy text-[clamp(5rem,min(28vw,42vh),16rem)] leading-none terracotta-3d select-none">
+                <span
+                  className={`${tokens.numerals.fontClass} text-[clamp(6rem,min(30vw,45vh),18rem)] leading-none select-none ${tokens.numerals.color} ${tokens.numerals.glow}`}
+                >
                   {count}
                 </span>
 
                 <motion.p
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className="mt-2 font-comic font-bold text-base sm:text-xl tracking-wider uppercase text-black dark:text-white"
+                  className={`mt-2 ${tokens.typography.fontBody} font-bold text-base sm:text-xl tracking-wider uppercase opacity-80`}
                 >
-                  {count === 1 ? 'Get Ready...' : 'Counting Down...'}
+                  {count === 1 ? 'Ready...' : 'Counting Down...'}
                 </motion.p>
               </>
             ) : (
               <>
-                <span className="font-chewy text-[clamp(4rem,min(24vw,34vh),13rem)] leading-none terracotta-3d select-none tracking-wider">
+                <span
+                  className={`${tokens.numerals.fontClass} text-[clamp(5rem,min(26vw,38vh),15rem)] leading-none select-none tracking-wider ${tokens.accent.color} ${tokens.accent.glow}`}
+                >
                   GO!
                 </span>
 
                 <motion.p
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className="mt-2 font-comic font-black text-xl sm:text-2xl tracking-widest uppercase text-[#b91c1c]"
+                  className={`mt-2 ${tokens.typography.fontBody} font-black text-xl sm:text-2xl tracking-widest uppercase ${tokens.accent.color}`}
                 >
                   START!
                 </motion.p>
@@ -153,10 +160,14 @@ export function CountdownOverlay({
         <button
           type="button"
           onClick={handleSkip}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#b91c1c] hover:bg-[#991b1b] text-white font-comic font-bold text-sm sm:text-base border-3 border-black comic-shadow transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
+          className={`inline-flex items-center gap-2 px-6 py-3 ${tokens.buttons.pillRounded} font-bold text-sm sm:text-base cursor-pointer transition-all ${tokens.buttons.primaryStart}`}
         >
           <FastForward className="w-4 h-4 fill-current" />
-          Skip Countdown &amp; Go!
+          <span>
+            {isBracket
+              ? '[ SKIP COUNTDOWN & GO ]'
+              : 'Skip Countdown & Go!'}
+          </span>
         </button>
       </div>
     </motion.div>

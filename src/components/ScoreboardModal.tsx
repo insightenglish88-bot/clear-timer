@@ -13,12 +13,14 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Team, AppTheme } from '../types';
+import { SkinTokens } from '../theme/skins';
 import { formatTime } from '../utils/formatTime';
 
 interface ScoreboardModalProps {
   teams: Team[];
   currentElapsedMs: number;
-  theme: AppTheme;
+  theme?: AppTheme;
+  tokens?: SkinTokens;
   onAddTeam: (name: string) => void;
   onRemoveTeam: (id: string) => void;
   onSetTeamTime: (id: string, timeMs: number) => void;
@@ -31,6 +33,7 @@ export function ScoreboardModal({
   teams,
   currentElapsedMs,
   theme,
+  tokens,
   onAddTeam,
   onRemoveTeam,
   onSetTeamTime,

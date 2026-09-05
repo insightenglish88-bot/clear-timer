@@ -8,81 +8,46 @@ import {
   VolumeX,
   Timer,
   Save,
-  Sun,
-  Moon,
   Trophy,
 } from 'lucide-react';
-import { TimerStatus, AppTheme, LearnerMode } from '../types';
+import { TimerStatus } from '../types';
+import { SkinTokens } from '../theme/skins';
 
 interface TimerControlsProps {
   status: TimerStatus;
   isCovered: boolean;
   soundEnabled: boolean;
   countdownEnabled: boolean;
-  theme: AppTheme;
-  mode?: LearnerMode;
+  tokens: SkinTokens;
   onToggleStartStop: () => void;
   onToggleCover: () => void;
   onReset: () => void;
   onToggleSound: () => void;
   onToggleCountdown: () => void;
-  onToggleTheme: () => void;
   onOpenSessions: () => void;
   onOpenScoreboard: () => void;
 }
-
-/**
- * The control bar is shared chrome, so its accent has to follow the active
- * learner profile. Previously every mode rendered YLE red, which put a
- * cartoon-red primary button under the executive presentation panel.
- */
-const ACCENT: Record<
-  LearnerMode,
-  { solid: string; onSolid: string; ink: string; border: string }
-> = {
-  yle: {
-    solid: 'bg-[#b91c1c] hover:bg-[#991b1b]',
-    onSolid: 'text-white',
-    ink: 'text-[#b91c1c]',
-    border: 'border-black',
-  },
-  middle: {
-    solid: 'bg-indigo-600 hover:bg-indigo-700',
-    onSolid: 'text-white',
-    ink: 'text-indigo-700 dark:text-indigo-300',
-    border: 'border-indigo-900 dark:border-indigo-300',
-  },
-  business: {
-    solid: 'bg-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:hover:bg-white',
-    onSolid: 'text-white dark:text-slate-900',
-    ink: 'text-slate-700 dark:text-slate-300',
-    border: 'border-slate-700 dark:border-slate-400',
-  },
-};
 
 export function TimerControls({
   status,
   isCovered,
   soundEnabled,
   countdownEnabled,
-  theme,
-  mode = 'yle',
+  tokens,
   onToggleStartStop,
   onToggleCover,
   onReset,
   onToggleSound,
   onToggleCountdown,
-  onToggleTheme,
   onOpenSessions,
   onOpenScoreboard,
 }: TimerControlsProps) {
   const isRunning = status === 'running';
   const isCountdown = status === 'countdown';
   const isIdle = status === 'idle';
-  const accent = ACCENT[mode];
 
-  // One shape and one surface for every secondary control.
-  const secondary = `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-900 text-black dark:text-white border-2 ${accent.border} comic-shadow-sm transition-colors cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-neutral-100 dark:hover:bg-neutral-800`;
+  const isBracket = !!tokens.buttons.bracketStyle;
+  const pillRounded = tokens.buttons.pillRounded;
 
   return (
     <div id="timer-controls-bar" className="w-full flex flex-col gap-2.5">
@@ -93,33 +58,39 @@ export function TimerControls({
           id="btn-start-stop"
           type="button"
           onClick={onToggleStartStop}
-          className={`relative flex items-center justify-center gap-2.5 py-3.5 sm:py-4 px-6 rounded-2xl font-comic font-bold text-base sm:text-xl border-3 ${
-            accent.border
-          } transition-colors cursor-pointer comic-shadow active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+          className={`relative flex items-center justify-center gap-2.5 py-3.5 sm:py-4 px-6 ${pillRounded} ${tokens.typography.fontBody} font-bold text-base sm:text-lg transition-all cursor-pointer ${
             isRunning
-              ? 'bg-black hover:bg-neutral-900 text-white dark:bg-neutral-100 dark:hover:bg-white dark:text-black'
+              ? tokens.buttons.primaryStop
               : isCountdown
-              ? `${accent.solid} ${accent.onSolid} motion-safe:animate-pulse`
-              : `${accent.solid} ${accent.onSolid}`
+              ? tokens.buttons.primaryCountdown
+              : tokens.buttons.primaryStart
           }`}
         >
           {isRunning ? (
             <>
               <Pause className="w-5 h-5 fill-current" />
-              <span>Stop / Pause</span>
-              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-white/20 dark:bg-black/15 font-bold ml-1">
+              <span>{isBracket ? '[ STOP / PAUSE ]' : 'Stop / Pause'}</span>
+              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/20 dark:bg-white/20 font-mono font-bold ml-1">
                 Space
               </kbd>
             </>
           ) : isCountdown ? (
             <>
-              <span>Cancel Countdown</span>
+              <span>{isBracket ? '[ CANCEL COUNTDOWN ]' : 'Cancel Countdown'}</span>
             </>
           ) : (
             <>
               <Play className="w-5 h-5 fill-current" />
-              <span>{isIdle ? 'Start Timer' : 'Resume Timer'}</span>
-              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/25 font-bold ml-1">
+              <span>
+                {isBracket
+                  ? isIdle
+                    ? '[ START TIMER ]'
+                    : '[ RESUME TIMER ]'
+                  : isIdle
+                  ? 'Start Timer'
+                  : 'Resume Timer'}
+              </span>
+              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/20 dark:bg-white/20 font-mono font-bold ml-1">
                 Space
               </kbd>
             </>
@@ -132,28 +103,26 @@ export function TimerControls({
           type="button"
           onClick={onToggleCover}
           aria-pressed={isCovered}
-          className={`flex items-center justify-center gap-2 py-3.5 sm:py-4 px-5 rounded-2xl font-comic font-bold text-base sm:text-lg border-3 ${
-            accent.border
-          } transition-colors cursor-pointer comic-shadow active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+          className={`flex items-center justify-center gap-2 py-3.5 sm:py-4 px-5 ${pillRounded} ${tokens.typography.fontBody} font-bold text-base sm:text-lg transition-all cursor-pointer ${
             isCovered
-              ? `${accent.solid} ${accent.onSolid}`
-              : 'bg-white text-black hover:bg-neutral-100 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800'
+              ? tokens.buttons.coverActive
+              : tokens.buttons.coverInactive
           }`}
           title={isCovered ? 'Uncover the timer' : 'Cover the timer'}
         >
           {isCovered ? (
             <>
               <Eye className="w-5 h-5 stroke-[2.5]" />
-              <span>Uncover Timer</span>
-              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/25 font-bold ml-1">
+              <span>{isBracket ? '[ UNCOVER TIMER ]' : 'Uncover Timer'}</span>
+              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/20 dark:bg-white/20 font-mono font-bold ml-1">
                 C
               </kbd>
             </>
           ) : (
             <>
               <EyeOff className="w-5 h-5 stroke-[2.5]" />
-              <span>Cover Timer</span>
-              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-neutral-200 dark:bg-neutral-700 font-bold ml-1">
+              <span>{isBracket ? '[ COVER TIMER ]' : 'Cover Timer'}</span>
+              <kbd className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-md bg-black/10 dark:bg-white/10 font-mono font-bold ml-1">
                 C
               </kbd>
             </>
@@ -161,8 +130,8 @@ export function TimerControls({
         </button>
       </div>
 
-      {/* Secondary Bar: Reset, Sound, 5s Countdown, Scoreboard, Saved Sessions, Theme */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 text-xs font-comic font-bold">
+      {/* Secondary Bar: Reset, Sound, 5s Countdown, Scoreboard, Saved Sessions */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 text-xs font-bold">
         <div className="flex items-center gap-1.5 flex-wrap">
           {/* Reset */}
           <button
@@ -170,10 +139,10 @@ export function TimerControls({
             type="button"
             onClick={onReset}
             disabled={isIdle && !isCountdown}
-            className={`${secondary} disabled:opacity-40 disabled:cursor-not-allowed`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary} disabled:opacity-30 disabled:cursor-not-allowed`}
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${accent.ink}`} />
-            Reset (R)
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{isBracket ? '[ RESET (R) ]' : 'Reset (R)'}</span>
           </button>
 
           {/* Sound Toggle */}
@@ -182,17 +151,17 @@ export function TimerControls({
             type="button"
             onClick={onToggleSound}
             aria-pressed={soundEnabled}
-            className={secondary}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
           >
             {soundEnabled ? (
               <>
-                <Volume2 className={`w-3.5 h-3.5 ${accent.ink}`} />
-                <span>Sound On</span>
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>{isBracket ? '[ SOUND: ON ]' : 'Sound On'}</span>
               </>
             ) : (
               <>
-                <VolumeX className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
-                <span>Sound Off</span>
+                <VolumeX className="w-3.5 h-3.5 opacity-60" />
+                <span>{isBracket ? '[ SOUND: OFF ]' : 'Sound Off'}</span>
               </>
             )}
           </button>
@@ -203,17 +172,19 @@ export function TimerControls({
             type="button"
             onClick={onToggleCountdown}
             aria-pressed={countdownEnabled}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border-2 ${
-              accent.border
-            } comic-shadow-sm transition-colors cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${pillRounded} transition-all cursor-pointer ${
               countdownEnabled
-                ? `${accent.solid} ${accent.onSolid}`
-                : 'bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300'
+                ? tokens.buttons.primaryStart
+                : tokens.buttons.secondary
             }`}
             title="Toggle the 5-second countdown before start"
           >
             <Timer className="w-3.5 h-3.5" />
-            <span>5s Countdown: {countdownEnabled ? 'ON' : 'OFF'}</span>
+            <span>
+              {isBracket
+                ? `[ COUNTDOWN: ${countdownEnabled ? 'ON' : 'OFF'} ]`
+                : `5s Countdown: ${countdownEnabled ? 'ON' : 'OFF'}`}
+            </span>
           </button>
         </div>
 
@@ -223,10 +194,10 @@ export function TimerControls({
             id="btn-open-scoreboard"
             type="button"
             onClick={onOpenScoreboard}
-            className={`${secondary} px-3`}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
           >
-            <Trophy className={`w-3.5 h-3.5 ${accent.ink}`} />
-            <span>Scoreboard</span>
+            <Trophy className="w-3.5 h-3.5" />
+            <span>{isBracket ? '[ SCOREBOARD ]' : 'Scoreboard'}</span>
           </button>
 
           {/* Sessions Modal Trigger */}
@@ -234,25 +205,10 @@ export function TimerControls({
             id="btn-open-sessions"
             type="button"
             onClick={onOpenSessions}
-            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border-2 ${accent.border} ${accent.solid} ${accent.onSolid} comic-shadow-sm transition-colors cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none`}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
           >
             <Save className="w-3.5 h-3.5" />
-            <span>Saved Sessions</span>
-          </button>
-
-          {/* Theme Toggle (Light / Dark) */}
-          <button
-            id="btn-toggle-theme"
-            type="button"
-            onClick={onToggleTheme}
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            className={`p-1.5 rounded-xl bg-white dark:bg-neutral-900 text-black dark:text-white border-2 ${accent.border} comic-shadow-sm transition-colors cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-neutral-100 dark:hover:bg-neutral-800`}
-          >
-            {theme === 'light' ? (
-              <Moon className="w-4 h-4" />
-            ) : (
-              <Sun className="w-4 h-4" />
-            )}
+            <span>{isBracket ? '[ SAVED SESSIONS ]' : 'Saved Sessions'}</span>
           </button>
         </div>
       </div>

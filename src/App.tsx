@@ -1,40 +1,38 @@
 /**
- * Clear Timer - Adaptive Multi-Tier Classroom, Study & Executive Timer
- * Supports:
- * - Mode A: YLE Learners (Kids, games, visual cues, sound fanfare)
- * - Mode B: Middle School (Study blocks, focus intervals, task tracking)
- * - Mode C: Business English (Executive pacing, agenda timer, speech rehearsal)
+ * Clear Timer - Precision Aesthetic Stopwatch & Countdown Timer
+ * Features:
+ * - 6 Modular Design-Token Aesthetic Skins:
+ *   1. Executive Monochrome (Slate/White/Minimalist)
+ *   2. Retro Terminal (Vintage Monospace/Phosphor Green/CRT Scanlines)
+ *   3. Cyberpunk Neon (Midnight Obsidian/Cyan/Magenta Glow)
+ *   4. Warm Studio / Paper (Soft Cream/Espresso/Terracotta Tactile)
+ *   5. Deep Ocean (Abyssal Navy/Deep Teal/Aqua Glow)
+ *   6. Solarized Sunset (Plum-Indigo/Coral/Gold Glassmorphism)
+ * - 100% Reclaimed Viewport Layout for Maximum Numeral Scale
+ * - Instant Live Skin Switching with Sticky LocalStorage Persistence
+ * - High-Precision RequestAnimationFrame Timing Loop
+ * - Privacy Vault Shield & Voice Countdown
  */
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Trophy, BookOpen, Presentation } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { TimerDisplay } from './components/TimerDisplay';
 import { TimerControls } from './components/TimerControls';
 import { ShortcutGuide } from './components/ShortcutGuide';
 import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
+import { SkinSelector } from './components/SkinSelector';
+import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
+import { TimerStatus, Team } from './types';
+import { playSound } from './utils/audio';
 
 /**
- * Saved Sessions is the only screen that touches Firebase, and Firebase is by
- * far the largest dependency in the app. Loading it on demand keeps the
- * first paint of what is, most of the time, just a stopwatch off that cost.
+ * Saved Sessions is loaded on demand to keep initial bundle cost low.
  */
 const SessionsModal = lazy(() =>
   import('./components/SessionsModal').then((m) => ({ default: m.SessionsModal })),
 );
-import { ModeSelector } from './components/ModeSelector';
-import { MiddleSchoolPanel } from './components/MiddleSchoolPanel';
-import { BusinessEnglishPanel } from './components/BusinessEnglishPanel';
-import { TimerStatus, AppTheme, Team, LearnerMode } from './types';
-import { playSound } from './utils/audio';
-
-/** Default block length per mode, in minutes. `null` = open-ended stopwatch. */
-const DEFAULT_TARGET: Record<LearnerMode, number | null> = {
-  yle: null,
-  middle: 25,
-  business: 5,
-};
 
 export default function App() {
   const [elapsedMs, setElapsedMs] = useState<number>(0);
@@ -44,22 +42,21 @@ export default function App() {
   const [countdownEnabled, setCountdownEnabled] = useState<boolean>(true);
   const [showSessionsModal, setShowSessionsModal] = useState<boolean>(false);
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
-  const [showAuxPanel, setShowAuxPanel] = useState<boolean>(true);
 
-  // Centralized Learner Profile Mode
-  const [mode, setMode] = useState<LearnerMode>(() => {
+  // Design-Token Skin Switcher State
+  const [skinId, setSkinId] = useState<SkinId>(() => {
     try {
-      const savedMode = localStorage.getItem('clear_timer_mode');
-      if (savedMode === 'yle' || savedMode === 'middle' || savedMode === 'business') {
-        return savedMode;
-      }
+      const saved = localStorage.getItem('clear_timer_skin');
+      if (saved && saved in SKINS) return saved as SkinId;
     } catch {}
-    return 'yle';
+    return DEFAULT_SKIN_ID;
   });
 
+  const activeTokens = SKINS[skinId] || SKINS[DEFAULT_SKIN_ID];
+
   /**
-   * Duration the timer counts up toward, in minutes.
-   * `null` means the mode runs as an open-ended stopwatch.
+   * Optional target duration the timer counts toward, in minutes.
+   * `null` means the timer runs as an open-ended stopwatch.
    */
   const [targetMinutes, setTargetMinutes] = useState<number | null>(() => {
     try {
@@ -73,19 +70,15 @@ export default function App() {
     return null;
   });
 
-  // Save mode whenever changed
+  // Sticky skin persistence and document attribute binding
   useEffect(() => {
     try {
-      localStorage.setItem('clear_timer_mode', mode);
-      // Update document title for SEO & context
-      const modeTitles = {
-        yle: 'Clear Timer — YLE Learners & Classroom Game Timer',
-        middle: 'Clear Timer — Middle School Study & Focus Interval Blocks',
-        business: 'Clear Timer — Business English & Executive Speech Pacing',
-      };
-      document.title = modeTitles[mode] || 'Clear Timer';
+      localStorage.setItem('clear_timer_skin', skinId);
+      document.documentElement.dataset.skin = skinId;
+      document.documentElement.dataset.theme = activeTokens.isDark ? 'dark' : 'light';
+      document.title = `Clear Timer — ${activeTokens.name}`;
     } catch {}
-  }, [mode]);
+  }, [skinId, activeTokens]);
 
   useEffect(() => {
     try {
@@ -95,16 +88,6 @@ export default function App() {
       );
     } catch {}
   }, [targetMinutes]);
-
-  /** Switching modes adopts that mode default block length. */
-  const handleSelectMode = useCallback((newMode: LearnerMode) => {
-    setMode((prev) => {
-      if (prev !== newMode) {
-        setTargetMinutes(DEFAULT_TARGET[newMode]);
-      }
-      return newMode;
-    });
-  }, []);
 
   // Teams & Scoreboard state persisted in localStorage
   const [teams, setTeams] = useState<Team[]>(() => {
@@ -140,36 +123,21 @@ export default function App() {
 
   const handleSetTeamTime = useCallback((id: string, timeMs: number) => {
     setTeams((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, timeMs: Math.max(0, timeMs) } : t))
+      prev.map((t) => (t.id === id ? { ...t, timeMs: Math.max(0, timeMs) } : t)),
     );
   }, []);
 
   const handleAdjustTeamTime = useCallback((id: string, deltaMs: number) => {
     setTeams((prev) =>
       prev.map((t) =>
-        t.id === id ? { ...t, timeMs: Math.max(0, t.timeMs + deltaMs) } : t
-      )
+        t.id === id ? { ...t, timeMs: Math.max(0, t.timeMs + deltaMs) } : t,
+      ),
     );
   }, []);
 
   const handleResetAllTimes = useCallback(() => {
     setTeams((prev) => prev.map((t) => ({ ...t, timeMs: 0 })));
   }, []);
-
-  // Theme state persisted in localStorage, seeded from the OS on first run.
-  const [theme, setTheme] = useState<AppTheme>(() => {
-    try {
-      const stored = localStorage.getItem('clear_timer_theme');
-      if (stored === 'dark' || stored === 'light') return stored;
-      if (
-        typeof window !== 'undefined' &&
-        window.matchMedia?.('(prefers-color-scheme: dark)').matches
-      ) {
-        return 'dark';
-      }
-    } catch {}
-    return 'light';
-  });
 
   // Precise time refs
   const startTimeRef = useRef<number>(0);
@@ -187,23 +155,6 @@ export default function App() {
 
   const countdownEnabledRef = useRef<boolean>(countdownEnabled);
   countdownEnabledRef.current = countdownEnabled;
-
-  /**
-   * Drive the `dark:` variant and the per-mode type/shadow rules from the
-   * document element. The Tailwind variant in index.css is bound to
-   * `data-theme`, so this is what makes the in-app toggle actually work;
-   * without it those utilities answer to the OS setting instead.
-   */
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem('clear_timer_theme', theme);
-    } catch {}
-  }, [theme]);
-
-  useEffect(() => {
-    document.documentElement.dataset.mode = mode;
-  }, [mode]);
 
   // High-precision animation frame timer loop
   const updateTimer = useCallback(() => {
@@ -280,20 +231,7 @@ export default function App() {
     });
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-  }, []);
-
-  /**
-   * Choosing a block sets the duration the timer counts toward. It deliberately
-   * does not reset the clock: wiping a running session because someone adjusted
-   * the block length would throw away recorded time.
-   */
-  const handleSelectTarget = useCallback((minutes: number | null) => {
-    setTargetMinutes(minutes);
-  }, []);
-
-  // Sound the fanfare once, the moment a block is completed.
+  // Fanfare trigger on block completion
   const targetMs = targetMinutes !== null ? targetMinutes * 60000 : 0;
   const targetReached = targetMs > 0 && elapsedMs >= targetMs;
   const announcedTargetRef = useRef<boolean>(false);
@@ -346,25 +284,7 @@ export default function App() {
     };
   }, []);
 
-  // Mode-specific branding
-  const brandColor =
-    mode === 'business'
-      ? 'text-slate-800 dark:text-slate-200'
-      : mode === 'middle'
-      ? 'text-indigo-600 dark:text-indigo-400'
-      : 'text-[#b91c1c]';
-
-  const brandRuleBg =
-    mode === 'business'
-      ? 'bg-slate-700'
-      : mode === 'middle'
-      ? 'bg-indigo-600'
-      : 'bg-[#b91c1c]';
-
-  const auxButtonBase =
-    'flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 bg-white dark:bg-neutral-900 text-black dark:text-white text-xs font-bold shadow-sm transition-colors cursor-pointer';
-
-  /** Human-readable status, announced politely to assistive tech. */
+  /** Human-readable status announced politely to assistive tech */
   const statusLabel =
     status === 'running'
       ? 'Timer running'
@@ -377,18 +297,10 @@ export default function App() {
   return (
     <main
       id="timer-app-root"
-      /*
-       * `h-dvh` + `overflow-hidden` pins the shell to exactly one screen so the
-       * controls can never be pushed below the fold; previously the aux panels
-       * grew unbounded and shipped the Start button off-screen. `w-full` rather
-       * than `w-screen` avoids the scrollbar-width horizontal overflow.
-       */
-      className={`h-dvh w-full overflow-hidden flex flex-col gap-2 p-3 sm:p-4 select-none transition-colors duration-200 ${
-        theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'
-      }`}
+      style={activeTokens.canvas.style}
+      className={`h-dvh w-full overflow-hidden flex flex-col gap-2 p-3 sm:p-5 select-none transition-colors duration-300 ${activeTokens.canvas.bg} ${activeTokens.canvas.text}`}
     >
-      {/* Status for screen readers. The clock itself is far too chatty to
-          announce, so only transitions are voiced. */}
+      {/* Accessibility live region */}
       <p aria-live="polite" className="sr-only">
         {statusLabel}
         {isCovered ? ', display covered' : ''}
@@ -399,20 +311,20 @@ export default function App() {
         {status === 'countdown' && (
           <CountdownOverlay
             soundEnabled={soundEnabled}
-            theme={theme}
+            tokens={activeTokens}
             onComplete={handleCountdownComplete}
             onCancel={handleCountdownCancel}
           />
         )}
       </AnimatePresence>
 
-      {/* Team Time Scoreboard Modal (YLE Mode) */}
+      {/* Team Time Scoreboard Modal */}
       <AnimatePresence>
         {showScoreboardModal && (
           <ScoreboardModal
             teams={teams}
             currentElapsedMs={elapsedMs}
-            theme={theme}
+            tokens={activeTokens}
             onAddTeam={handleAddTeam}
             onRemoveTeam={handleRemoveTeam}
             onSetTeamTime={handleSetTeamTime}
@@ -429,193 +341,109 @@ export default function App() {
           {showSessionsModal && (
             <SessionsModal
               currentElapsedMs={elapsedMs}
-              theme={theme}
-              mode={mode}
+              tokens={activeTokens}
               onClose={() => setShowSessionsModal(false)}
             />
           )}
         </AnimatePresence>
       </Suspense>
 
-      {/* Top Header: Brand Identity & Adaptive Mode Selector */}
-      <header className="w-full max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 md:gap-3 shrink-0">
+      {/* Top Header: Brand Identity & Modular Skin Switcher */}
+      <header className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5 shrink-0">
         <div className="flex items-center justify-between w-full md:w-auto">
           <div className="flex flex-col">
-            <div className={`w-full h-1.5 ${brandRuleBg} rounded-full mb-0.5 transition-colors`} />
+            <div
+              className={`w-full h-1.5 rounded-full mb-0.5 transition-all ${activeTokens.accent.ruleBg}`}
+            />
             <div className="flex items-baseline gap-1.5 px-1">
-              <span className={`font-black text-2xl sm:text-3xl tracking-tight drop-shadow-sm transition-colors ${brandColor}`}>
+              <span
+                className={`font-black text-2xl sm:text-3xl tracking-tight transition-colors ${activeTokens.accent.color}`}
+              >
                 clear
               </span>
-              <span className="font-bold text-xl sm:text-2xl text-black dark:text-white tracking-tight">
+              <span className="font-bold text-xl sm:text-2xl tracking-tight">
                 timer
               </span>
             </div>
-            <div className={`w-full h-1.5 ${brandRuleBg} rounded-full mt-0.5 transition-colors`} />
+            <div
+              className={`w-full h-1.5 rounded-full mt-0.5 transition-all ${activeTokens.accent.ruleBg}`}
+            />
           </div>
 
           {/* Mobile Cover active badge */}
           {isCovered && (
-            <div className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#b91c1c] text-white text-xs font-bold shadow-sm">
+            <div
+              className={`md:hidden flex items-center gap-1 px-2.5 py-1 ${activeTokens.buttons.pillRounded} text-xs font-bold shadow-sm ${activeTokens.accent.badgeBg} ${activeTokens.accent.badgeText}`}
+            >
               <span>Covered</span>
             </div>
           )}
         </div>
 
-        {/* Centralized Mode Selector */}
-        <div className="flex items-center justify-center">
-          <ModeSelector
-            currentMode={mode}
-            theme={theme}
-            onSelectMode={handleSelectMode}
+        {/* Modular Design-Token Skin Switcher */}
+        <div className="flex items-center justify-center max-w-full">
+          <SkinSelector
+            currentSkin={skinId}
+            onSelectSkin={setSkinId}
+            tokens={activeTokens}
           />
         </div>
 
-        {/* Right Status Badges & Quick Action */}
+        {/* Right Header Controls: Cover Indicator & Team Time Quick Trigger */}
         <div className="hidden md:flex items-center gap-2">
           {isCovered && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#b91c1c] text-white border-2 border-black text-xs font-bold shadow-sm">
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1 ${activeTokens.buttons.pillRounded} text-xs font-bold shadow-sm ${activeTokens.accent.badgeBg} ${activeTokens.accent.badgeText} border ${activeTokens.accent.badgeBorder}`}
+            >
               <span>Cover active</span>
             </div>
           )}
 
-          {mode === 'yle' && (
-            <button
-              type="button"
-              onClick={() => setShowScoreboardModal(true)}
-              className={`${auxButtonBase} border-black hover:bg-neutral-100 dark:hover:bg-neutral-800`}
-            >
-              <Trophy className="w-3.5 h-3.5 text-[#b91c1c]" />
-              <span>Team Times ({teams.length})</span>
-            </button>
-          )}
-
-          {mode === 'middle' && (
-            <button
-              type="button"
-              onClick={() => setShowAuxPanel((p) => !p)}
-              className={`${auxButtonBase} border-indigo-600 hover:bg-indigo-50 dark:hover:bg-neutral-800`}
-              aria-expanded={showAuxPanel}
-              aria-controls="aux-panel"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>{showAuxPanel ? 'Hide Tasks' : 'Show Tasks'}</span>
-            </button>
-          )}
-
-          {mode === 'business' && (
-            <button
-              type="button"
-              onClick={() => setShowAuxPanel((p) => !p)}
-              className={`${auxButtonBase} border-slate-700 hover:bg-slate-100 dark:hover:bg-neutral-800`}
-              aria-expanded={showAuxPanel}
-              aria-controls="aux-panel"
-            >
-              <Presentation className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-              <span>{showAuxPanel ? 'Hide Agenda' : 'Show Agenda'}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowScoreboardModal(true)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 ${activeTokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${activeTokens.buttons.secondary}`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>Teams ({teams.length})</span>
+          </button>
         </div>
       </header>
 
-      {/* Content region: the clock takes what is left, the panel is capped. */}
-      <div className="flex-1 min-h-0 w-full flex flex-col gap-2">
-        {/* Main Core Section: Screen-Filling Numerals */}
-        {/* The clock keeps a floor of roughly a third of the content area so a
-            long task list can never squeeze it into illegibility. */}
-        <section
-          aria-label="Digital Timer Display"
-          className="w-full max-w-7xl mx-auto flex-1 min-h-[32%] flex flex-col"
-        >
-          <TimerDisplay
-            elapsedMs={elapsedMs}
-            status={status}
-            isCovered={isCovered}
-            theme={theme}
-            mode={mode}
-            targetMinutes={targetMinutes}
-            onToggleCover={toggleCover}
-            onToggleStartStop={toggleStartStop}
-          />
-        </section>
-
-        {/* Adaptive Mode-Specific Panel (Middle School & Business English).
-            The collapse control is repeated here for small screens, where the
-            header's version is hidden and space is tightest. */}
-        {mode !== 'yle' && (
-          <div className="w-full max-w-4xl mx-auto shrink-0 min-h-0 flex flex-col md:hidden">
-            <button
-              type="button"
-              onClick={() => setShowAuxPanel((p) => !p)}
-              aria-expanded={showAuxPanel}
-              aria-controls="aux-panel"
-              className={`self-end inline-flex items-center gap-1.5 px-3 py-1 rounded-full border-2 bg-white dark:bg-neutral-900 text-black dark:text-white text-xs font-bold cursor-pointer ${
-                mode === 'middle' ? 'border-indigo-600' : 'border-slate-700 dark:border-slate-400'
-              }`}
-            >
-              {mode === 'middle' ? (
-                <BookOpen className="w-3.5 h-3.5" />
-              ) : (
-                <Presentation className="w-3.5 h-3.5" />
-              )}
-              <span>
-                {showAuxPanel ? 'Hide' : 'Show'}{' '}
-                {mode === 'middle' ? 'tasks' : 'agenda'}
-              </span>
-            </button>
-          </div>
-        )}
-
-        {showAuxPanel && mode === 'middle' && (
-          <section
-            id="aux-panel"
-            aria-label="Study Blocks and Tasks"
-            className="w-full max-w-4xl mx-auto shrink min-h-0 overflow-y-auto"
-          >
-            <MiddleSchoolPanel
-              theme={theme}
-              elapsedMs={elapsedMs}
-              targetMinutes={targetMinutes}
-              onSetPresetDuration={handleSelectTarget}
-            />
-          </section>
-        )}
-
-        {showAuxPanel && mode === 'business' && (
-          <section
-            id="aux-panel"
-            aria-label="Executive Presentation Pacing"
-            className="w-full max-w-4xl mx-auto shrink min-h-0 overflow-y-auto"
-          >
-            <BusinessEnglishPanel
-              theme={theme}
-              elapsedMs={elapsedMs}
-              targetMinutes={targetMinutes}
-              onSetTargetMinutes={handleSelectTarget}
-            />
-          </section>
-        )}
-      </div>
+      {/* Main Content Region: Reclaimed 100% for TimerDisplay */}
+      <section
+        aria-label="Digital Timer Display"
+        className="w-full max-w-7xl mx-auto flex-1 min-h-0 flex flex-col"
+      >
+        <TimerDisplay
+          elapsedMs={elapsedMs}
+          status={status}
+          isCovered={isCovered}
+          tokens={activeTokens}
+          targetMinutes={targetMinutes}
+          onToggleCover={toggleCover}
+          onToggleStartStop={toggleStartStop}
+        />
+      </section>
 
       {/* Bottom Bar: Action Controls & Hotkeys */}
-      <footer className="w-full max-w-4xl mx-auto shrink-0 flex flex-col gap-2">
+      <footer className="w-full max-w-5xl mx-auto shrink-0 flex flex-col gap-2">
         <TimerControls
           status={status}
           isCovered={isCovered}
           soundEnabled={soundEnabled}
           countdownEnabled={countdownEnabled}
-          theme={theme}
-          mode={mode}
+          tokens={activeTokens}
           onToggleStartStop={toggleStartStop}
           onToggleCover={toggleCover}
           onReset={resetTimer}
           onToggleSound={() => setSoundEnabled((prev) => !prev)}
           onToggleCountdown={() => setCountdownEnabled((prev) => !prev)}
-          onToggleTheme={toggleTheme}
           onOpenSessions={() => setShowSessionsModal(true)}
           onOpenScoreboard={() => setShowScoreboardModal(true)}
         />
 
-        <ShortcutGuide theme={theme} mode={mode} />
+        <ShortcutGuide tokens={activeTokens} />
       </footer>
     </main>
   );

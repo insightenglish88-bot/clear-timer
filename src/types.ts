@@ -1,3 +1,6 @@
+export type { SkinId } from './theme/skins';
+import type { SkinId } from './theme/skins';
+
 export type LearnerMode = 'yle' | 'middle' | 'business';
 
 export interface LapRecord {
@@ -18,29 +21,16 @@ export interface Team {
   timeMs: number; // Recorded time in ms (0 = no time recorded)
 }
 
-export interface FocusTask {
-  id: string;
-  title: string;
-  completed: boolean;
-  durationMinutes: number;
-}
-
-export interface AgendaItem {
-  id: string;
-  topic: string;
-  allottedMinutes: number;
-  completed: boolean;
-}
-
 export interface TimerSession {
   id: string;
   title: string;
   totalMs: number;
   formattedTime: string;
-  mode: LearnerMode;
+  mode?: string;
+  skin?: SkinId;
   laps?: LapRecord[];
   createdAt: number;
-  theme: AppTheme;
+  theme?: AppTheme;
 }
 
 export interface FirebaseConfigOptions {

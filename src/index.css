@@ -21,6 +21,7 @@
   --font-chewy: 'Chewy', ui-rounded, system-ui, cursive;
   --font-ui: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-numeric: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* Brand colours, preserved exactly from the shipped identity. */
   --color-yle: #b91c1c;
@@ -40,26 +41,42 @@
 }
 
 @layer base {
-  /* The mode sets the voice of the whole shell, not just the panels. */
+  /* Skin & theme variables drive the entire shell */
   :root {
     --app-ink: #0a0a0a;
-    --app-muted: #52525b; /* 7.6:1 on white — passes body text */
-    --app-surface: #ffffff;
-    --app-ring: var(--color-yle);
+    --app-muted: #52525b;
+    --app-surface: #0f172a;
+    --app-ring: #94a3b8;
   }
 
   :root[data-theme='dark'] {
     --app-ink: #fafafa;
-    --app-muted: #a1a1aa; /* 8.9:1 on near-black */
+    --app-muted: #a1a1aa;
     --app-surface: #000000;
   }
 
-  :root[data-mode='middle'] {
-    --app-ring: var(--color-middle);
+  :root[data-skin='executive'] {
+    --app-ring: #94a3b8;
   }
 
-  :root[data-mode='business'] {
-    --app-ring: #475569;
+  :root[data-skin='retro'] {
+    --app-ring: #22c55e;
+  }
+
+  :root[data-skin='cyberpunk'] {
+    --app-ring: #06b6d4;
+  }
+
+  :root[data-skin='paper'] {
+    --app-ring: #c2410c;
+  }
+
+  :root[data-skin='ocean'] {
+    --app-ring: #14b8a6;
+  }
+
+  :root[data-skin='sunset'] {
+    --app-ring: #f97316;
   }
 
   html {
@@ -188,6 +205,21 @@
 
 :root[data-mode='business'][data-theme='dark'] .terracotta-3d {
   color: #f1f5f9;
+}
+
+/* CRT Scanlines effect for Retro Terminal */
+.crt-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.35) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(34, 197, 94, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(34, 197, 94, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------------
