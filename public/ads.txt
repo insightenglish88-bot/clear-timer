@@ -1,0 +1,4 @@
+# Clear Timer - Authorized Digital Sellers (Google AdSense)
+# Format: <Field #1>, <Field #2>, <Field #3>, <Field #4>
+# Replace pub-0000000000000000 with your actual Google AdSense publisher ID
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

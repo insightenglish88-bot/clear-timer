@@ -237,6 +237,16 @@ export function TermsModal({
               <p>
                 Clear Timer's use of information received from Google APIs adheres strictly to the <strong>Google API Services User Data Policy</strong>, including the Limited Use requirements. Google OAuth profile data is never used for advertising, nor is it transferred to external machine learning (ML) models.
               </p>
+
+              <h4 className="font-bold text-blue-400">2.4 Advertising Partners &amp; Cookie Disclosure (Google AdSense)</h4>
+              <p>
+                To support free accessibility for educators and productivity users worldwide, Clear Timer displays light, non-intrusive advertisements provided by <strong>Google AdSense</strong>:
+              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Google uses cookies (including the DoubleClick cookie) to serve ads based on prior visits to this or other websites.</li>
+                <li>You may opt out of personalized advertising at any time by visiting <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-blue-300">Google Ads Settings</a> or <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-blue-300">AboutAds.info</a>.</li>
+                <li>Child-directed experiences adhere strictly to COPPA rules; no behavioral tracking or profiling is conducted on student learning sessions.</li>
+              </ul>
             </div>
           )}
 

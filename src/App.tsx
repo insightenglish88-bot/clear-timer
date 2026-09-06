@@ -24,6 +24,7 @@ import { ShortcutGuide } from './components/ShortcutGuide';
 import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
 import { TermsModal } from './components/TermsModal';
+import { AdBanner } from './components/AdBanner';
 import { SkinSelector } from './components/SkinSelector';
 import { AuthButton } from './components/AuthButton';
 import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
@@ -740,6 +741,9 @@ export default function App() {
         />
 
         <ShortcutGuide tokens={activeTokens} />
+
+        {/* Google AdSense Light Web Ad Slot */}
+        <AdBanner tokens={activeTokens} className="my-0.5" />
 
         {/* Footer Regulatory Links (GDPR, CCPA, COPPA, FERPA) */}
         <div className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-2 text-[11px] sm:text-xs opacity-60 hover:opacity-100 transition-opacity select-none">
