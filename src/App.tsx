@@ -23,6 +23,7 @@ import { TimerControls } from './components/TimerControls';
 import { ShortcutGuide } from './components/ShortcutGuide';
 import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
+import { Logo } from './components/Logo';
 import { TermsModal } from './components/TermsModal';
 import { AdBanner } from './components/AdBanner';
 import { SkinSelector } from './components/SkinSelector';
@@ -632,24 +633,7 @@ export default function App() {
       {/* Top Header: Brand Identity & Modular Skin Switcher */}
       <header className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5 shrink-0">
         <div className="flex items-center justify-between w-full md:w-auto">
-          <div className="flex flex-col">
-            <div
-              className={`w-full h-1.5 rounded-full mb-0.5 transition-all ${activeTokens.accent.ruleBg}`}
-            />
-            <div className="flex items-baseline gap-1.5 px-1">
-              <span
-                className={`font-black text-2xl sm:text-3xl tracking-tight transition-colors ${activeTokens.accent.color}`}
-              >
-                clear
-              </span>
-              <span className="font-bold text-xl sm:text-2xl tracking-tight">
-                timer
-              </span>
-            </div>
-            <div
-              className={`w-full h-1.5 rounded-full mt-0.5 transition-all ${activeTokens.accent.ruleBg}`}
-            />
-          </div>
+          <Logo tokens={activeTokens} size="md" />
 
           {/* Mobile Cover active badge */}
           {isCovered && (
