@@ -16,8 +16,8 @@
  */
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
-import { Trophy } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Trophy, AlertTriangle, X } from 'lucide-react';
 import { TimerDisplay } from './components/TimerDisplay';
 import { TimerControls } from './components/TimerControls';
 import { ShortcutGuide } from './components/ShortcutGuide';
@@ -34,6 +34,7 @@ import {
   signInWithGoogle,
   logoutUser,
   subscribeToAuthChanges,
+  getAuthErrorMessage,
 } from './firebase/auth';
 import { saveClassesToCloud, loadClassesFromCloud } from './firebase/classes';
 
@@ -54,6 +55,7 @@ export default function App() {
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [termsInitialTab, setTermsInitialTab] = useState<'terms' | 'privacy' | 'coppa' | 'erasure'>('terms');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Design-Token Skin Switcher State
   const [skinId, setSkinId] = useState<SkinId>(() => {
@@ -206,6 +208,7 @@ export default function App() {
 
   const handleSignIn = useCallback(async () => {
     try {
+      setAuthError(null);
       setIsSyncing(true);
       const user = await signInWithGoogle();
       if (user) {
@@ -221,8 +224,9 @@ export default function App() {
           await saveClassesToCloud(user.uid, classes);
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Sign-in failed:', err);
+      setAuthError(getAuthErrorMessage(err));
     } finally {
       setIsSyncing(false);
     }
@@ -524,6 +528,45 @@ export default function App() {
         {statusLabel}
         {isCovered ? ', display covered' : ''}
       </p>
+
+      {/* Authentication Error Toast / Alert Banner */}
+      <AnimatePresence>
+        {authError && (
+          <motion.div
+            role="alert"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4 pointer-events-auto"
+          >
+            <div className="p-3.5 sm:p-4 rounded-2xl border-2 shadow-2xl bg-amber-950/95 border-amber-500/50 text-amber-100 backdrop-blur-md flex items-start gap-3 select-text">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 text-xs sm:text-sm">
+                <p className="font-bold text-amber-300 mb-1">Google Sign-In Alert</p>
+                <p className="opacity-90 leading-relaxed">{authError}</p>
+                {authError.includes('Firebase Console') && (
+                  <a
+                    href="https://console.firebase.google.com/project/cleartimer-55025/authentication"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-amber-300 underline hover:text-white"
+                  >
+                    Open Firebase Console Authentication Settings &nearr;
+                  </a>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAuthError(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-amber-300 hover:text-white transition-colors cursor-pointer select-none"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 5-Second Countdown Overlay */}
       <AnimatePresence>
