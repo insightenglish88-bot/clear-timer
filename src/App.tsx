@@ -24,9 +24,17 @@ import { ShortcutGuide } from './components/ShortcutGuide';
 import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
 import { SkinSelector } from './components/SkinSelector';
+import { AuthButton } from './components/AuthButton';
 import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
 import { TimerStatus, Team, Classroom } from './types';
 import { playSound } from './utils/audio';
+import type { User } from 'firebase/auth';
+import {
+  signInWithGoogle,
+  logoutUser,
+  subscribeToAuthChanges,
+} from './firebase/auth';
+import { saveClassesToCloud, loadClassesFromCloud } from './firebase/classes';
 
 /**
  * Saved Sessions is loaded on demand to keep initial bundle cost low.
@@ -138,15 +146,92 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('clear_timer_classes', JSON.stringify(classes));
-    } catch {}
-  }, [classes]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem('clear_timer_active_class_id', activeClassId);
     } catch {}
   }, [activeClassId]);
+
+  // Google Authentication & Cloud Sync State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Subscribe to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges(async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        setIsSyncing(true);
+        try {
+          const cloudClasses = await loadClassesFromCloud(user.uid);
+          if (cloudClasses && cloudClasses.length > 0) {
+            setClasses(cloudClasses);
+            setActiveClassId((prev) =>
+              cloudClasses.some((c) => c.id === prev)
+                ? prev
+                : cloudClasses[0].id,
+            );
+          } else {
+            // First time this user signs in: back up current local classes to cloud
+            await saveClassesToCloud(user.uid, classes);
+          }
+        } catch (err) {
+          console.warn('Error syncing classes on sign in:', err);
+        } finally {
+          setIsSyncing(false);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sync to Cloud whenever classes change and user is logged in
+  useEffect(() => {
+    try {
+      localStorage.setItem('clear_timer_classes', JSON.stringify(classes));
+    } catch {}
+
+    if (currentUser) {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      setIsSyncing(true);
+      syncTimeoutRef.current = setTimeout(async () => {
+        await saveClassesToCloud(currentUser.uid, classes);
+        setIsSyncing(false);
+      }, 500);
+    }
+  }, [classes, currentUser]);
+
+  const handleSignIn = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      const user = await signInWithGoogle();
+      if (user) {
+        const cloudClasses = await loadClassesFromCloud(user.uid);
+        if (cloudClasses && cloudClasses.length > 0) {
+          setClasses(cloudClasses);
+          setActiveClassId((prev) =>
+            cloudClasses.some((c) => c.id === prev)
+              ? prev
+              : cloudClasses[0].id,
+          );
+        } else {
+          await saveClassesToCloud(user.uid, classes);
+        }
+      }
+    } catch (err) {
+      console.error('Sign-in failed:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [classes]);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error('Sign-out failed:', err);
+    }
+  }, []);
 
   // Classroom action handlers
   const handleAddClass = useCallback((name: string) => {
@@ -457,6 +542,8 @@ export default function App() {
             activeClassId={activeClassId}
             currentElapsedMs={elapsedMs}
             tokens={activeTokens}
+            user={currentUser}
+            onSignIn={handleSignIn}
             onSelectClass={handleSelectClass}
             onAddClass={handleAddClass}
             onRenameClass={handleRenameClass}
@@ -525,11 +612,11 @@ export default function App() {
           />
         </div>
 
-        {/* Right Header Controls: Cover Indicator & Active Class Team Quick Trigger */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Right Header Controls: Cover Indicator, Active Class Team Quick Trigger, and Auth Profile */}
+        <div className="flex items-center gap-2">
           {isCovered && (
             <div
-              className={`flex items-center gap-1.5 px-3 py-1 ${activeTokens.buttons.pillRounded} text-xs font-bold shadow-sm ${activeTokens.accent.badgeBg} ${activeTokens.accent.badgeText} border ${activeTokens.accent.badgeBorder}`}
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1 ${activeTokens.buttons.pillRounded} text-xs font-bold shadow-sm ${activeTokens.accent.badgeBg} ${activeTokens.accent.badgeText} border ${activeTokens.accent.badgeBorder}`}
             >
               <span>Cover active</span>
             </div>
@@ -539,15 +626,26 @@ export default function App() {
             type="button"
             onClick={() => setShowScoreboardModal(true)}
             title={`Active Class: ${activeClass?.name || 'Class 1'} with ${activeTeamsCount} teams`}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 ${activeTokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${activeTokens.buttons.secondary}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 ${activeTokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${activeTokens.buttons.secondary}`}
           >
             <Trophy className="w-3.5 h-3.5" />
-            <span>
+            <span className="hidden sm:inline">
               {isBracket
                 ? `[ ${activeClass?.name.toUpperCase() || 'CLASS'}: TEAMS (${activeTeamsCount}) ]`
                 : `${activeClass?.name || 'Class'}: Teams (${activeTeamsCount})`}
             </span>
+            <span className="sm:hidden">
+              {activeClass?.name || 'Class'} ({activeTeamsCount})
+            </span>
           </button>
+
+          <AuthButton
+            user={currentUser}
+            isSyncing={isSyncing}
+            tokens={activeTokens}
+            onSignIn={handleSignIn}
+            onSignOut={handleSignOut}
+          />
         </div>
       </header>
 

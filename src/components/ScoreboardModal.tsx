@@ -14,7 +14,9 @@ import {
   Edit2,
   Check,
   FolderPlus,
+  Cloud,
 } from 'lucide-react';
+import type { User } from 'firebase/auth';
 import { Classroom } from '../types';
 import { SkinTokens } from '../theme/skins';
 import { formatTime } from '../utils/formatTime';
@@ -24,6 +26,8 @@ interface ScoreboardModalProps {
   activeClassId: string;
   currentElapsedMs: number;
   tokens: SkinTokens;
+  user?: User | null;
+  onSignIn?: () => void;
   onSelectClass: (classId: string) => void;
   onAddClass: (name: string) => void;
   onRenameClass: (classId: string, name: string) => void;
@@ -41,6 +45,8 @@ export function ScoreboardModal({
   activeClassId,
   currentElapsedMs,
   tokens,
+  user,
+  onSignIn,
   onSelectClass,
   onAddClass,
   onRenameClass,
@@ -159,14 +165,36 @@ export function ScoreboardModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close scoreboard"
-            className={`p-2 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <div
+                className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 ${pillRounded} text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30`}
+                title={`Saved to ${user.email}`}
+              >
+                <Cloud className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate max-w-[140px]">{user.email}</span>
+              </div>
+            ) : onSignIn ? (
+              <button
+                type="button"
+                onClick={onSignIn}
+                className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 ${pillRounded} text-[11px] font-bold ${tokens.buttons.secondary} cursor-pointer opacity-90 hover:opacity-100`}
+                title="Sign in with Google to sync to your account"
+              >
+                <Cloud className="w-3.5 h-3.5 opacity-60" />
+                <span>Sync with Google</span>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close scoreboard"
+              className={`p-2 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Classes Tabs Bar */}

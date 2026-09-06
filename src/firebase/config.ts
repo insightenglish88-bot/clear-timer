@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth, Auth } from 'firebase/auth';
 import { FirebaseConfigOptions } from '../types';
 
 export function getActiveFirebaseConfig(): FirebaseConfigOptions {
@@ -19,6 +20,7 @@ export function getActiveFirebaseConfig(): FirebaseConfigOptions {
 
 let appInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
 
 export function isFirebaseConfigured(): boolean {
   const config = getActiveFirebaseConfig();
@@ -56,3 +58,17 @@ export function getDb(): Firestore | null {
     return null;
   }
 }
+
+export function getFirebaseAuth(): Auth | null {
+  if (authInstance) return authInstance;
+  const app = getFirebaseApp();
+  if (!app) return null;
+  try {
+    authInstance = getAuth(app);
+    return authInstance;
+  } catch (err) {
+    console.warn('Firebase Auth initialization error:', err);
+    return null;
+  }
+}
+
