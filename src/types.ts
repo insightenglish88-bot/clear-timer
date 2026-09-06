@@ -21,6 +21,13 @@ export interface Team {
   timeMs: number; // Recorded time in ms (0 = no time recorded)
 }
 
+export interface Classroom {
+  id: string;
+  name: string;
+  teams: Team[];
+  createdAt?: number;
+}
+
 export interface TimerSession {
   id: string;
   title: string;

@@ -1,6 +1,7 @@
 /**
  * Clear Timer - Precision Aesthetic Stopwatch & Countdown Timer
  * Features:
+ * - Multi-Class & Team Scoreboard Management (Classes with isolated team rosters & times)
  * - 6 Modular Design-Token Aesthetic Skins:
  *   1. Executive Monochrome (Slate/White/Minimalist)
  *   2. Retro Terminal (Vintage Monospace/Phosphor Green/CRT Scanlines)
@@ -24,7 +25,7 @@ import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
 import { SkinSelector } from './components/SkinSelector';
 import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
-import { TimerStatus, Team } from './types';
+import { TimerStatus, Team, Classroom } from './types';
 import { playSound } from './utils/audio';
 
 /**
@@ -89,55 +90,183 @@ export default function App() {
     } catch {}
   }, [targetMinutes]);
 
-  // Teams & Scoreboard state persisted in localStorage
-  const [teams, setTeams] = useState<Team[]>(() => {
+  // Hierarchical Classroom Management State (Persisted in localStorage)
+  const [classes, setClasses] = useState<Classroom[]>(() => {
     try {
-      const saved = localStorage.getItem('clear_timer_teams');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('clear_timer_classes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // Migrate from legacy clear_timer_teams if available
+      const legacy = localStorage.getItem('clear_timer_teams');
+      const legacyTeams: Team[] = legacy
+        ? JSON.parse(legacy)
+        : [
+            { id: 'team-1', name: 'Team Alpha', timeMs: 0 },
+            { id: 'team-2', name: 'Team Beta', timeMs: 0 },
+          ];
+      return [
+        {
+          id: 'class-1',
+          name: 'Class 1',
+          teams: legacyTeams,
+          createdAt: Date.now(),
+        },
+      ];
     } catch {}
     return [
-      { id: 'team-1', name: 'Team Alpha', timeMs: 0 },
-      { id: 'team-2', name: 'Team Beta', timeMs: 0 },
+      {
+        id: 'class-1',
+        name: 'Class 1',
+        teams: [
+          { id: 'team-1', name: 'Team Alpha', timeMs: 0 },
+          { id: 'team-2', name: 'Team Beta', timeMs: 0 },
+        ],
+        createdAt: Date.now(),
+      },
     ];
+  });
+
+  const [activeClassId, setActiveClassId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('clear_timer_active_class_id');
+      if (saved) return saved;
+    } catch {}
+    return 'class-1';
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem('clear_timer_teams', JSON.stringify(teams));
+      localStorage.setItem('clear_timer_classes', JSON.stringify(classes));
     } catch {}
-  }, [teams]);
+  }, [classes]);
 
-  // Team action handlers
-  const handleAddTeam = useCallback((name: string) => {
-    const newTeam: Team = {
-      id: `team-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+  useEffect(() => {
+    try {
+      localStorage.setItem('clear_timer_active_class_id', activeClassId);
+    } catch {}
+  }, [activeClassId]);
+
+  // Classroom action handlers
+  const handleAddClass = useCallback((name: string) => {
+    const newClass: Classroom = {
+      id: `class-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name,
-      timeMs: 0,
+      teams: [
+        { id: `team-1-${Date.now()}`, name: 'Team 1', timeMs: 0 },
+        { id: `team-2-${Date.now()}`, name: 'Team 2', timeMs: 0 },
+      ],
+      createdAt: Date.now(),
     };
-    setTeams((prev) => [...prev, newTeam]);
+    setClasses((prev) => [...prev, newClass]);
+    setActiveClassId(newClass.id);
   }, []);
 
-  const handleRemoveTeam = useCallback((id: string) => {
-    setTeams((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  const handleSetTeamTime = useCallback((id: string, timeMs: number) => {
-    setTeams((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, timeMs: Math.max(0, timeMs) } : t)),
+  const handleRenameClass = useCallback((classId: string, name: string) => {
+    setClasses((prev) =>
+      prev.map((c) => (c.id === classId ? { ...c, name } : c)),
     );
   }, []);
 
-  const handleAdjustTeamTime = useCallback((id: string, deltaMs: number) => {
-    setTeams((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, timeMs: Math.max(0, t.timeMs + deltaMs) } : t,
+  const handleRemoveClass = useCallback(
+    (classId: string) => {
+      setClasses((prev) => {
+        if (prev.length <= 1) return prev;
+        const filtered = prev.filter((c) => c.id !== classId);
+        return filtered;
+      });
+      setActiveClassId((prevActive) => {
+        if (prevActive === classId) {
+          const remaining = classes.filter((c) => c.id !== classId);
+          return remaining[0]?.id || 'class-1';
+        }
+        return prevActive;
+      });
+    },
+    [classes],
+  );
+
+  const handleSelectClass = useCallback((classId: string) => {
+    setActiveClassId(classId);
+  }, []);
+
+  // Team action handlers (scoped to specific class)
+  const handleAddTeam = useCallback((classId: string, teamName: string) => {
+    const newTeam: Team = {
+      id: `team-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: teamName,
+      timeMs: 0,
+    };
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.id === classId ? { ...c, teams: [...c.teams, newTeam] } : c,
       ),
     );
   }, []);
 
-  const handleResetAllTimes = useCallback(() => {
-    setTeams((prev) => prev.map((t) => ({ ...t, timeMs: 0 })));
+  const handleRemoveTeam = useCallback((classId: string, teamId: string) => {
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.id === classId
+          ? { ...c, teams: c.teams.filter((t) => t.id !== teamId) }
+          : c,
+      ),
+    );
   }, []);
+
+  const handleSetTeamTime = useCallback(
+    (classId: string, teamId: string, timeMs: number) => {
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === classId
+            ? {
+                ...c,
+                teams: c.teams.map((t) =>
+                  t.id === teamId ? { ...t, timeMs: Math.max(0, timeMs) } : t,
+                ),
+              }
+            : c,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleAdjustTeamTime = useCallback(
+    (classId: string, teamId: string, deltaMs: number) => {
+      setClasses((prev) =>
+        prev.map((c) =>
+          c.id === classId
+            ? {
+                ...c,
+                teams: c.teams.map((t) =>
+                  t.id === teamId
+                    ? { ...t, timeMs: Math.max(0, t.timeMs + deltaMs) }
+                    : t,
+                ),
+              }
+            : c,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleResetClassTimes = useCallback((classId: string) => {
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.id === classId
+          ? { ...c, teams: c.teams.map((t) => ({ ...t, timeMs: 0 })) }
+          : c,
+      ),
+    );
+  }, []);
+
+  // Current active class lookup
+  const activeClass =
+    classes.find((c) => c.id === activeClassId) || classes[0];
+  const activeTeamsCount = activeClass?.teams.length || 0;
 
   // Precise time refs
   const startTimeRef = useRef<number>(0);
@@ -294,6 +423,8 @@ export default function App() {
       ? 'Timer paused'
       : 'Timer ready';
 
+  const isBracket = !!activeTokens.buttons.bracketStyle;
+
   return (
     <main
       id="timer-app-root"
@@ -318,18 +449,23 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Team Time Scoreboard Modal */}
+      {/* Multi-Class & Team Scoreboard Modal */}
       <AnimatePresence>
         {showScoreboardModal && (
           <ScoreboardModal
-            teams={teams}
+            classes={classes}
+            activeClassId={activeClassId}
             currentElapsedMs={elapsedMs}
             tokens={activeTokens}
+            onSelectClass={handleSelectClass}
+            onAddClass={handleAddClass}
+            onRenameClass={handleRenameClass}
+            onRemoveClass={handleRemoveClass}
             onAddTeam={handleAddTeam}
             onRemoveTeam={handleRemoveTeam}
             onSetTeamTime={handleSetTeamTime}
             onAdjustTeamTime={handleAdjustTeamTime}
-            onResetAllTimes={handleResetAllTimes}
+            onResetClassTimes={handleResetClassTimes}
             onClose={() => setShowScoreboardModal(false)}
           />
         )}
@@ -389,7 +525,7 @@ export default function App() {
           />
         </div>
 
-        {/* Right Header Controls: Cover Indicator & Team Time Quick Trigger */}
+        {/* Right Header Controls: Cover Indicator & Active Class Team Quick Trigger */}
         <div className="hidden md:flex items-center gap-2">
           {isCovered && (
             <div
@@ -402,10 +538,15 @@ export default function App() {
           <button
             type="button"
             onClick={() => setShowScoreboardModal(true)}
+            title={`Active Class: ${activeClass?.name || 'Class 1'} with ${activeTeamsCount} teams`}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 ${activeTokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${activeTokens.buttons.secondary}`}
           >
             <Trophy className="w-3.5 h-3.5" />
-            <span>Teams ({teams.length})</span>
+            <span>
+              {isBracket
+                ? `[ ${activeClass?.name.toUpperCase() || 'CLASS'}: TEAMS (${activeTeamsCount}) ]`
+                : `${activeClass?.name || 'Class'}: Teams (${activeTeamsCount})`}
+            </span>
           </button>
         </div>
       </header>
