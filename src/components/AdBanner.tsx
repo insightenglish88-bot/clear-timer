@@ -28,7 +28,7 @@ export function AdBanner({
   const effectiveClientId =
     clientId ||
     (import.meta.env.VITE_ADSENSE_CLIENT_ID as string | undefined)?.trim() ||
-    '';
+    'ca-pub-6159012230081663';
   const effectiveSlotId =
     slotId ||
     (import.meta.env.VITE_ADSENSE_SLOT_FOOTER as string | undefined)?.trim() ||
