@@ -23,6 +23,7 @@ import { TimerControls } from './components/TimerControls';
 import { ShortcutGuide } from './components/ShortcutGuide';
 import { CountdownOverlay } from './components/CountdownOverlay';
 import { ScoreboardModal } from './components/ScoreboardModal';
+import { TermsModal } from './components/TermsModal';
 import { SkinSelector } from './components/SkinSelector';
 import { AuthButton } from './components/AuthButton';
 import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
@@ -51,6 +52,8 @@ export default function App() {
   const [countdownEnabled, setCountdownEnabled] = useState<boolean>(true);
   const [showSessionsModal, setShowSessionsModal] = useState<boolean>(false);
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
+  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [termsInitialTab, setTermsInitialTab] = useState<'terms' | 'privacy' | 'coppa' | 'erasure'>('terms');
 
   // Design-Token Skin Switcher State
   const [skinId, setSkinId] = useState<SkinId>(() => {
@@ -571,6 +574,17 @@ export default function App() {
         </AnimatePresence>
       </Suspense>
 
+      {/* Terms & Conditions / Regulatory Compliance Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <TermsModal
+            tokens={activeTokens}
+            initialTab={termsInitialTab}
+            onClose={() => setShowTermsModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Top Header: Brand Identity & Modular Skin Switcher */}
       <header className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5 shrink-0">
         <div className="flex items-center justify-between w-full md:w-auto">
@@ -683,6 +697,43 @@ export default function App() {
         />
 
         <ShortcutGuide tokens={activeTokens} />
+
+        {/* Footer Regulatory Links (GDPR, CCPA, COPPA, FERPA) */}
+        <div className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-2 text-[11px] sm:text-xs opacity-60 hover:opacity-100 transition-opacity select-none">
+          <span>&copy; {new Date().getFullYear()} Clear Timer</span>
+          <span aria-hidden="true">&bull;</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTermsInitialTab('terms');
+              setShowTermsModal(true);
+            }}
+            className="hover:underline cursor-pointer focus:outline-none focus:underline"
+          >
+            Terms &amp; Conditions
+          </button>
+          <span aria-hidden="true">&bull;</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTermsInitialTab('privacy');
+              setShowTermsModal(true);
+            }}
+            className="hover:underline cursor-pointer focus:outline-none focus:underline"
+          >
+            Privacy &amp; Data Rights (GDPR &bull; CCPA &bull; COPPA &bull; FERPA)
+          </button>
+          <span aria-hidden="true">&bull;</span>
+          <a
+            href="/terms.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline cursor-pointer opacity-80 hover:opacity-100 inline-flex items-center gap-0.5"
+            title="Open comprehensive standalone legal document in a new tab"
+          >
+            Legal Document &nearr;
+          </a>
+        </div>
       </footer>
     </main>
   );
