@@ -9,6 +9,7 @@ import {
   Timer,
   Save,
   Trophy,
+  Mic,
 } from 'lucide-react';
 import { TimerStatus } from '../types';
 import { SkinTokens } from '../theme/skins';
@@ -19,6 +20,8 @@ interface TimerControlsProps {
   soundEnabled: boolean;
   countdownEnabled: boolean;
   tokens: SkinTokens;
+  activeVoiceLabel?: string;
+  onOpenVoiceModal?: () => void;
   onToggleStartStop: () => void;
   onToggleCover: () => void;
   onReset: () => void;
@@ -34,6 +37,8 @@ export function TimerControls({
   soundEnabled,
   countdownEnabled,
   tokens,
+  activeVoiceLabel,
+  onOpenVoiceModal,
   onToggleStartStop,
   onToggleCover,
   onReset,
@@ -186,6 +191,24 @@ export function TimerControls({
                 : `5s Countdown: ${countdownEnabled ? 'ON' : 'OFF'}`}
             </span>
           </button>
+
+          {/* 5s Countdown Voice & Crescendo Tone Selector */}
+          {countdownEnabled && onOpenVoiceModal && (
+            <button
+              id="btn-select-countdown-voice"
+              type="button"
+              onClick={onOpenVoiceModal}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 ${pillRounded} transition-all cursor-pointer ${tokens.buttons.secondary}`}
+              title="Select Countdown Voice & Tone"
+            >
+              <Mic className="w-3.5 h-3.5 text-cyan-400" />
+              <span>
+                {isBracket
+                  ? `[ VOICE: ${activeVoiceLabel || 'Natural'} ]`
+                  : `Voice: ${activeVoiceLabel || 'Natural'}`}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">

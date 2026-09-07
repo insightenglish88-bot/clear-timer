@@ -15,7 +15,7 @@
  * - Privacy Vault Shield & Voice Countdown
  */
 
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, AlertTriangle, X } from 'lucide-react';
 import { TimerDisplay } from './components/TimerDisplay';
@@ -28,9 +28,10 @@ import { TermsModal } from './components/TermsModal';
 import { AdBanner } from './components/AdBanner';
 import { SkinSelector } from './components/SkinSelector';
 import { AuthButton } from './components/AuthButton';
+import { VoiceSelectModal } from './components/VoiceSelectModal';
 import { SKINS, DEFAULT_SKIN_ID, SkinId } from './theme/skins';
 import { TimerStatus, Team, Classroom } from './types';
-import { playSound } from './utils/audio';
+import { playSound, getSelectedVoiceURI, setSelectedVoiceURI, cleanVoiceName } from './utils/audio';
 import type { User } from 'firebase/auth';
 import {
   signInWithGoogle,
@@ -57,8 +58,28 @@ export default function App() {
   const [showSessionsModal, setShowSessionsModal] = useState<boolean>(false);
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [showVoiceModal, setShowVoiceModal] = useState<boolean>(false);
   const [termsInitialTab, setTermsInitialTab] = useState<'terms' | 'privacy' | 'coppa' | 'erasure'>('terms');
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // Countdown Voice State (Natural speech with crescendo)
+  const [selectedVoiceURI, setSelectedVoiceURIState] = useState<string>(() => {
+    try {
+      return getSelectedVoiceURI();
+    } catch {
+      return '';
+    }
+  });
+
+  const activeVoiceLabel = useMemo(() => {
+    if (!selectedVoiceURI) return 'Natural';
+    return cleanVoiceName(selectedVoiceURI);
+  }, [selectedVoiceURI]);
+
+  const handleSelectVoice = useCallback((uri: string) => {
+    setSelectedVoiceURI(uri);
+    setSelectedVoiceURIState(uri);
+  }, []);
 
   // Design-Token Skin Switcher State
   const [skinId, setSkinId] = useState<SkinId>(() => {
@@ -598,12 +619,14 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 5-Second Countdown Overlay */}
+      {/* 5-Second Countdown Overlay with Crescendo and Voice Selection */}
       <AnimatePresence>
         {status === 'countdown' && (
           <CountdownOverlay
             soundEnabled={soundEnabled}
             tokens={activeTokens}
+            selectedVoiceURI={selectedVoiceURI}
+            onOpenVoiceModal={() => setShowVoiceModal(true)}
             onComplete={handleCountdownComplete}
             onCancel={handleCountdownCancel}
           />
@@ -654,6 +677,18 @@ export default function App() {
             tokens={activeTokens}
             initialTab={termsInitialTab}
             onClose={() => setShowTermsModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Countdown Voice & Crescendo Tone Modal */}
+      <AnimatePresence>
+        {showVoiceModal && (
+          <VoiceSelectModal
+            tokens={activeTokens}
+            selectedVoiceURI={selectedVoiceURI}
+            onSelectVoice={handleSelectVoice}
+            onClose={() => setShowVoiceModal(false)}
           />
         )}
       </AnimatePresence>
@@ -743,6 +778,8 @@ export default function App() {
           soundEnabled={soundEnabled}
           countdownEnabled={countdownEnabled}
           tokens={activeTokens}
+          activeVoiceLabel={activeVoiceLabel}
+          onOpenVoiceModal={() => setShowVoiceModal(true)}
           onToggleStartStop={toggleStartStop}
           onToggleCover={toggleCover}
           onReset={resetTimer}
