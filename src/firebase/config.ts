@@ -8,10 +8,23 @@ export function getActiveFirebaseConfig(): FirebaseConfigOptions {
     (import.meta as unknown as { env?: Record<string, string | undefined> })
       .env || {};
 
+  // Best practice for Firebase Auth on Firebase Hosting:
+  // Using the host domain (e.g. cleartimer-55025.web.app) prevents third-party cookie
+  // and partitioned storage blocking in modern browsers (Safari ITP, Chrome Privacy Sandbox).
+  let authDomain =
+    env.VITE_FIREBASE_AUTH_DOMAIN?.trim() || 'cleartimer-55025.web.app';
+
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host.endsWith('.web.app') || host.endsWith('.firebaseapp.com')) {
+      authDomain = host;
+    }
+  }
+
   return {
     apiKey: env.VITE_FIREBASE_API_KEY || '',
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || '',
-    projectId: env.VITE_FIREBASE_PROJECT_ID || '',
+    authDomain,
+    projectId: env.VITE_FIREBASE_PROJECT_ID || 'cleartimer-55025',
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || '',
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
     appId: env.VITE_FIREBASE_APP_ID || '',

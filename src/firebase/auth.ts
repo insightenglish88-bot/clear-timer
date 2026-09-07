@@ -1,6 +1,8 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   User,
@@ -34,21 +36,43 @@ export function getAuthErrorMessage(error: unknown): string {
     return 'This domain is not authorized for Google Sign-In. Add this domain to Authentication > Settings > Authorized domains in the Firebase Console.';
   }
 
-  if (
-    code === 'auth/popup-blocked' ||
-    message.includes('popup-blocked')
-  ) {
-    return 'The sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
+  if (code === 'auth/popup-blocked' || message.includes('popup-blocked')) {
+    return 'The sign-in popup was blocked by your browser. Sign-in via redirect is supported.';
+  }
+
+  if (code === 'auth/popup-closed-by-user') {
+    return 'The sign-in popup was closed before completing. If you saw Google\'s "Access blocked / Error 403: access_denied" screen, your Google Cloud OAuth Consent Screen is currently in "Testing" mode and requires clicking "Publish App" to permit public sign-in.';
+  }
+
+  if (code === 'auth/cancelled-popup-request') {
+    return 'The sign-in request was cancelled. Please try again.';
   }
 
   if (code === 'auth/network-request-failed') {
-    return 'Network connection failed. Please check your internet connection.';
+    return 'Network connection failed or third-party cookies were blocked by browser shields. Please check your connection.';
+  }
+
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'An account already exists with the same email using a different sign-in method.';
   }
 
   return message || 'Google sign-in could not be completed. Please try again.';
 }
 
-export async function signInWithGoogle(): Promise<User | null> {
+export async function checkRedirectResult(): Promise<User | null> {
+  const auth = getFirebaseAuth();
+  if (!auth) return null;
+
+  try {
+    const result = await getRedirectResult(auth);
+    return result ? result.user : null;
+  } catch (error: unknown) {
+    console.error('Error checking redirect result:', error);
+    throw error;
+  }
+}
+
+export async function signInWithGoogle(useRedirect = false): Promise<User | null> {
   const auth = getFirebaseAuth();
   if (!auth) {
     throw new Error('Firebase Auth is not initialized. Check your Firebase configuration.');
@@ -59,18 +83,24 @@ export async function signInWithGoogle(): Promise<User | null> {
     prompt: 'select_account',
   });
 
+  if (useRedirect) {
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
+
   try {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };
-    // Handle popup closed by user gracefully without throwing
-    if (
-      firebaseError.code === 'auth/popup-closed-by-user' ||
-      firebaseError.code === 'auth/cancelled-popup-request'
-    ) {
+
+    // If popup was blocked (e.g. mobile Safari / Chrome popup blocker), fall back to redirect
+    if (firebaseError.code === 'auth/popup-blocked') {
+      console.info('Popup blocked by browser; automatically falling back to redirect flow...');
+      await signInWithRedirect(auth, provider);
       return null;
     }
+
     console.error('Google Sign-In Error:', error);
     throw error;
   }

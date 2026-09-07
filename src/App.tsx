@@ -37,6 +37,7 @@ import {
   logoutUser,
   subscribeToAuthChanges,
   getAuthErrorMessage,
+  checkRedirectResult,
 } from './firebase/auth';
 import { saveClassesToCloud, loadClassesFromCloud } from './firebase/classes';
 
@@ -162,8 +163,13 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Subscribe to Firebase Auth state
+  // Subscribe to Firebase Auth state & process potential redirect results
   useEffect(() => {
+    checkRedirectResult().catch((err) => {
+      console.error('Redirect sign-in error:', err);
+      setAuthError(getAuthErrorMessage(err));
+    });
+
     const unsubscribe = subscribeToAuthChanges(async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -190,7 +196,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [classes]);
 
   // Sync to Cloud whenever classes change and user is logged in
   useEffect(() => {
@@ -208,11 +214,11 @@ export default function App() {
     }
   }, [classes, currentUser]);
 
-  const handleSignIn = useCallback(async () => {
+  const handleSignIn = useCallback(async (useRedirect = false) => {
     try {
       setAuthError(null);
       setIsSyncing(true);
-      const user = await signInWithGoogle();
+      const user = await signInWithGoogle(useRedirect);
       if (user) {
         const cloudClasses = await loadClassesFromCloud(user.uid);
         if (cloudClasses && cloudClasses.length > 0) {
@@ -555,6 +561,28 @@ export default function App() {
                   >
                     Open Firebase Console Authentication Settings &nearr;
                   </a>
+                )}
+                {authError.includes('Google Cloud OAuth Consent Screen') && (
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials/consent?project=cleartimer-55025"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-amber-300 underline hover:text-white"
+                  >
+                    Open Google Cloud OAuth Consent Screen (Click "Publish App") &nearr;
+                  </a>
+                )}
+                {(authError.includes('redirect') || authError.includes('popup was blocked')) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthError(null);
+                      handleSignIn(true);
+                    }}
+                    className="inline-flex items-center gap-1 mt-2.5 px-3 py-1.5 bg-amber-400 text-neutral-900 font-bold rounded-lg hover:bg-amber-300 cursor-pointer shadow transition-colors text-xs"
+                  >
+                    Sign In with Google (Redirect Mode) &rarr;
+                  </button>
                 )}
               </div>
               <button
