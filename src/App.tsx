@@ -741,7 +741,7 @@ export default function App() {
             }}
             className="hover:underline cursor-pointer focus:outline-none focus:underline"
           >
-            Terms &amp; Conditions
+            Terms and conditions
           </button>
           <span aria-hidden="true">&bull;</span>
           <button
@@ -752,17 +752,17 @@ export default function App() {
             }}
             className="hover:underline cursor-pointer focus:outline-none focus:underline"
           >
-            Privacy &amp; Data Rights (GDPR &bull; CCPA &bull; COPPA &bull; FERPA)
+            Privacy
           </button>
           <span aria-hidden="true">&bull;</span>
           <a
             href="/terms.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline cursor-pointer opacity-80 hover:opacity-100 inline-flex items-center gap-0.5"
+            className="hover:underline cursor-pointer opacity-80 hover:opacity-100"
             title="Open comprehensive standalone legal document in a new tab"
           >
-            Legal Document &nearr;
+            Legal
           </a>
         </div>
       </footer>
