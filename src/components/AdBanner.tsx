@@ -56,7 +56,15 @@ export function AdBanner({
 
   // Safely push ad onto queue once rendered and monitor ad fill status
   useEffect(() => {
-    if (!isConfigured || adPushed) return;
+    if (!isConfigured) return;
+
+    // If no ad unit slot ID is specified, immediately set unfilled status without pushing empty queue
+    if (!hasSlot) {
+      setAdStatus('unfilled');
+      return;
+    }
+
+    if (adPushed) return;
 
     const el = adRef.current;
     if (!el || typeof window === 'undefined') return;
@@ -86,12 +94,12 @@ export function AdBanner({
       setAdStatus('blocked');
     }
 
-    // Safety fallback: if after 3.5s no status has been resolved
+    // Safety fallback: if after 3.5s Google has not confirmed filled status
     const fallbackTimer = setTimeout(() => {
       const status = el.getAttribute('data-ad-status');
-      if (status === 'filled' || el.children.length > 0) {
+      if (status === 'filled') {
         setAdStatus('filled');
-      } else if (status === 'unfilled' || !hasSlot) {
+      } else {
         setAdStatus('unfilled');
       }
     }, 3500);
@@ -144,7 +152,9 @@ export function AdBanner({
                   &bull;
                 </span>
                 <span className="text-[10px] sm:text-[11px] opacity-80">
-                  Awaiting Google Site Review / Ad Slot ID ({effectiveClientId})
+                  {hasSlot
+                    ? 'Awaiting Google Ad Delivery / Site Review'
+                    : `Awaiting Ad Slot ID (${effectiveClientId})`}
                 </span>
               </div>
             )}
