@@ -17,7 +17,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, AlertTriangle, X } from 'lucide-react';
+import { Trophy, AlertTriangle, X, BookOpen, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import { TimerDisplay } from './components/TimerDisplay';
 import { TimerControls } from './components/TimerControls';
 import { ShortcutGuide } from './components/ShortcutGuide';
@@ -26,6 +26,7 @@ import { ScoreboardModal } from './components/ScoreboardModal';
 import { Logo } from './components/Logo';
 import { TermsModal } from './components/TermsModal';
 import { AdBanner } from './components/AdBanner';
+import { EditorialContent } from './components/EditorialContent';
 import { SkinSelector } from './components/SkinSelector';
 import { AuthButton } from './components/AuthButton';
 import { VoiceSelectModal } from './components/VoiceSelectModal';
@@ -61,6 +62,7 @@ export default function App() {
   const [showVoiceModal, setShowVoiceModal] = useState<boolean>(false);
   const [termsInitialTab, setTermsInitialTab] = useState<'terms' | 'privacy' | 'coppa' | 'erasure'>('terms');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
 
   // Countdown Voice State (Natural speech with crescendo)
   const [selectedVoiceURI, setSelectedVoiceURIState] = useState<string>(() => {
@@ -547,11 +549,18 @@ export default function App() {
   const isBracket = !!activeTokens.buttons.bracketStyle;
 
   return (
-    <main
+    <div
       id="timer-app-root"
       style={activeTokens.canvas.style}
-      className={`h-dvh w-full overflow-hidden flex flex-col gap-2 p-3 sm:p-5 select-none transition-colors duration-300 ${activeTokens.canvas.bg} ${activeTokens.canvas.text}`}
+      className={`w-full min-h-dvh flex flex-col transition-colors duration-300 ${activeTokens.canvas.bg} ${activeTokens.canvas.text}`}
     >
+      {/* Top Fold: Primary Interactive Timer Viewport */}
+      <main
+        className={`w-full flex flex-col justify-between gap-2 p-3 sm:p-5 select-none ${
+          isFocusMode ? 'fixed inset-0 z-50 h-dvh overflow-hidden' : 'min-h-dvh'
+        }`}
+        style={isFocusMode ? activeTokens.canvas.style : undefined}
+      >
       {/* Accessibility live region */}
       <p aria-live="polite" className="sr-only">
         {statusLabel}
@@ -751,6 +760,26 @@ export default function App() {
             onSignIn={handleSignIn}
             onSignOut={handleSignOut}
           />
+
+          <button
+            type="button"
+            onClick={() => setIsFocusMode((prev) => !prev)}
+            title={isFocusMode ? 'Exit Fullscreen Focus' : 'Fullscreen Focus Mode'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 ${activeTokens.buttons.pillRounded} text-xs font-bold transition-all cursor-pointer ${activeTokens.buttons.secondary}`}
+            aria-label={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+          >
+            {isFocusMode ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isBracket ? '[ EXIT FOCUS ]' : 'Exit Focus'}</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isBracket ? '[ FOCUS ]' : 'Focus'}</span>
+              </>
+            )}
+          </button>
         </div>
       </header>
 
@@ -791,12 +820,26 @@ export default function App() {
 
         <ShortcutGuide tokens={activeTokens} />
 
-        {/* Google AdSense Light Web Ad Slot */}
-        <AdBanner tokens={activeTokens} className="my-0.5" />
+        {/* Scroll jump link to rich educational content */}
+        {!isFocusMode && (
+          <div className="w-full flex justify-center py-0.5">
+            <a
+              href="#editorial-content"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold opacity-65 hover:opacity-100 transition-opacity hover:underline"
+            >
+              <span>Explore Classroom Timing Guide &amp; FAQ</span>
+              <ChevronDown className="w-3.5 h-3.5 animate-bounce" />
+            </a>
+          </div>
+        )}
 
-        {/* Footer Regulatory Links (GDPR, CCPA, COPPA, FERPA) */}
-        <div className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-2 text-[11px] sm:text-xs opacity-60 hover:opacity-100 transition-opacity select-none">
+        {/* Top-fold Quick Regulatory Links */}
+        <div className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 pb-1 text-[11px] sm:text-xs opacity-60 hover:opacity-100 transition-opacity select-none">
           <span>&copy; {new Date().getFullYear()} Clear Timer</span>
+          <span aria-hidden="true">&bull;</span>
+          <a href="/about.html" className="hover:underline opacity-80 hover:opacity-100">About</a>
+          <span aria-hidden="true">&bull;</span>
+          <a href="/guide.html" className="hover:underline opacity-80 hover:opacity-100">Guide</a>
           <span aria-hidden="true">&bull;</span>
           <button
             type="button"
@@ -821,16 +864,39 @@ export default function App() {
           </button>
           <span aria-hidden="true">&bull;</span>
           <a
-            href="/terms.html"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/contact.html"
             className="hover:underline cursor-pointer opacity-80 hover:opacity-100"
-            title="Open comprehensive standalone legal document in a new tab"
           >
-            Legal
+            Contact
           </a>
         </div>
       </footer>
     </main>
-  );
+
+    {/* Below-the-fold Rich Educational Publisher Content & Embedded Ad Placement */}
+    {!isFocusMode && (
+      <EditorialContent tokens={activeTokens}>
+        <AdBanner tokens={activeTokens} className="my-2" />
+      </EditorialContent>
+    )}
+
+    {/* Global Comprehensive Site Footer */}
+    {!isFocusMode && (
+      <footer className="w-full border-t border-white/10 py-8 px-4 text-center text-xs opacity-75">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            &copy; {new Date().getFullYear()} Clear Timer. Educational Precision Timing with Zero Compromise.
+          </div>
+          <nav className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium" aria-label="Site Navigation Links">
+            <a href="/about.html" className="hover:underline hover:text-sky-400 transition-colors">About Us</a>
+            <a href="/guide.html" className="hover:underline hover:text-sky-400 transition-colors">Classroom Guide</a>
+            <a href="/privacy.html" className="hover:underline hover:text-sky-400 transition-colors">Privacy Policy</a>
+            <a href="/terms.html" className="hover:underline hover:text-sky-400 transition-colors">Terms of Service</a>
+            <a href="/contact.html" className="hover:underline hover:text-sky-400 transition-colors">Contact</a>
+          </nav>
+        </div>
+      </footer>
+    )}
+  </div>
+);
 }
